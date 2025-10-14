@@ -8,10 +8,19 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "fastapi[all] (>=0.115.0,<0.120.0)",
+    "pydantic (>=2.0.0,<3.0.0)",
+    "uvicorn[standard] (>=0.37.0,<0.38.0)",
+    "pytest (>=8.4.2,<9.0.0)"
 ]
 
 [tool.poetry]
-packages = [{include = "backend", from = "src"}]
+packages = [{include = "app"}]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::UserWarning:fastapi._compat.v1"
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

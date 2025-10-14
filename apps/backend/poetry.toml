@@ -1,0 +1,5 @@
+[installer]
+no-binary = false
+
+[installer.modern-installation]
+enabled = true
