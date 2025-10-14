@@ -12,12 +12,7 @@ from fastapi import FastAPI, APIRouter
 
 from app.core.interfaces import LoggerProtocol, ModuleProtocol
 from app.core.logger import default_logger
-
-
-# List of installed modules (similar to Django's INSTALLED_APPS)
-INSTALLED_MODULES = [
-    "app.modules.health"
-]
+from app.config import INSTALLED_MODULES
 
 
 class ModuleLoader:

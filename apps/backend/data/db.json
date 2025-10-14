@@ -1,0 +1,12 @@
+{
+  "users": {
+    "0199e2b0-2494-76e0-8ea9-d412f22c6ddb": {
+      "id": "0199e2b0-2494-76e0-8ea9-d412f22c6ddb",
+      "username": "rakshith",
+      "email": "rakshith@example.com",
+      "password": "$2b$12$N3gN1RNiRaB6ZgFEnGS7FethJhUr3M.PR3aLgI759rQBd/BNs8d5.",
+      "created_at": "2025-10-14T17:56:58.580711",
+      "updated_at": null
+    }
+  }
+}

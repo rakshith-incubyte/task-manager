@@ -1,34 +1,19 @@
-"""
-FastAPI application entry point.
 
-This module follows strict SOLID principles:
-- SRP: create_app only creates and configures the app
-- OCP: Can extend via modules without modifying this file
-- LSP: All modules follow ModuleProtocol
-- ISP: Dependencies are minimal and focused
-- DIP: Depends on abstractions (Settings, LoggerProtocol), not concrete implementations
-"""
-
-from typing import Optional
+from typing import Optional, Callable
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import Settings, settings as default_settings
+from app.config import Settings, settings as default_settings
 from app.core.modules import register_modules
 from app.core.interfaces import LoggerProtocol
 from app.core.logger import default_logger
+from app.core.persistence import PersistenceProtocol
+import importlib
 
 
 def configure_cors(app: FastAPI, config: Settings) -> None:
     """
     Configure CORS middleware for the application.
-    
-    Single Responsibility: Only handles CORS configuration.
-    
-    Why separate function?
-    - SRP: Separates CORS config from app creation
-    - Testability: Can test CORS config independently
-    - Reusability: Can be called from different contexts
     
     Args:
         app: FastAPI application instance
@@ -51,13 +36,7 @@ def create_app(
     Create and configure the FastAPI application.
     
     This is the Application Factory Pattern with Dependency Injection.
-    
-    Why dependency injection?
-    - DIP: Depends on abstractions (Settings, LoggerProtocol)
-    - Testability: Tests can inject mock config and logger
-    - Flexibility: Can create multiple app instances with different configs
-    - No global state: Everything is explicit
-    
+        
     Args:
         config: Settings instance (injected). Defaults to global settings.
         logger: Logger instance (injected). Defaults to console logger.
@@ -78,7 +57,6 @@ def create_app(
     logger = logger or default_logger
     
     # Create FastAPI instance
-    # Why from config? So tests can override
     application = FastAPI(
         title=config.app_name,
         description=config.app_description,
@@ -86,17 +64,28 @@ def create_app(
         debug=config.debug,
     )
     
-    # Configure CORS middleware
-    # Why separate function? Single Responsibility
-    configure_cors(application, config)
+    # Initialize database factory (application state)
+    # Dynamically load persistence class from config
+    # To swap to PostgreSQL: just change config.persistence_class = "PostgreSQLPersistence"
     
-    # Register all installed modules (Django-style)
-    # Why inject logger? Dependency Inversion
+    # Import the persistence class dynamically
+    persistence_module = importlib.import_module("app.core.persistence")
+    persistence_class = getattr(persistence_module, config.persistence_class)
+    
+    def create_persistence(collection: str) -> PersistenceProtocol:
+        """
+        Generic factory function to create persistence instances.
+        
+        Uses the persistence class specified in config.
+        To switch databases, just change config.persistence_class!
+        """
+        return persistence_class.create_instance(config.database_path, collection)
+    
+    application.state.create_db = create_persistence
+    
+    configure_cors(application, config)
     register_modules(application, logger=logger)
     
     return application
 
-
-# Global app instance for production use
-# Why keep this? Backward compatibility and convenience
 app = create_app()

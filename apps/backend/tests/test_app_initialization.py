@@ -10,7 +10,7 @@ These tests demonstrate the benefits of SOLID principles:
 from fastapi import FastAPI
 
 from app.main import app, create_app, configure_cors
-from app.core.config import settings, Settings
+from app.config import settings, Settings
 from app.core.logger import NullLogger
 
 
