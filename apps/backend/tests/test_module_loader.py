@@ -25,6 +25,38 @@ def test_module_loader_import_module_success():
     assert hasattr(module, "router")
 
 
+def test_module_loader_check_protocol_compliance_success():
+    """Test protocol compliance check with valid module."""
+    loader = ModuleLoader(logger=NullLogger())
+    
+    mock_module = Mock()
+    mock_module.router = APIRouter()
+    
+    result = loader.check_protocol_compliance(mock_module)
+    assert result is True
+
+
+def test_module_loader_check_protocol_compliance_no_router():
+    """Test protocol compliance check fails when module has no router."""
+    loader = ModuleLoader(logger=NullLogger())
+    
+    mock_module = Mock(spec=[])  # No attributes
+    
+    result = loader.check_protocol_compliance(mock_module)
+    assert result is False
+
+
+def test_module_loader_check_protocol_compliance_wrong_type():
+    """Test protocol compliance check fails when router is wrong type."""
+    loader = ModuleLoader(logger=NullLogger())
+    
+    mock_module = Mock()
+    mock_module.router = "not_a_router"
+    
+    result = loader.check_protocol_compliance(mock_module)
+    assert result is False
+
+
 def test_module_loader_validate_module_success():
     """Test validation of valid module."""
     loader = ModuleLoader(logger=NullLogger())

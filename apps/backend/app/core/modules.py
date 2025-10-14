@@ -7,10 +7,10 @@ Following SOLID principles:
 - DIP: Depends on abstractions (LoggerProtocol), not concrete implementations
 """
 
-from typing import List, Any
+from typing import List, Any, Union
 from fastapi import FastAPI, APIRouter
 
-from app.core.interfaces import LoggerProtocol
+from app.core.interfaces import LoggerProtocol, ModuleProtocol
 from app.core.logger import default_logger
 
 
@@ -67,11 +67,37 @@ class ModuleLoader:
         """
         return __import__(module_path, fromlist=["router"])
     
+    def check_protocol_compliance(self, module: Union[ModuleProtocol, Any]) -> bool:
+        """
+        Check if module conforms to ModuleProtocol.
+        
+        This is a runtime check for protocol compliance.
+        ModuleProtocol requires: router attribute of type APIRouter
+        
+        Args:
+            module: Module to check (should implement ModuleProtocol)
+        
+        Returns:
+            True if module follows ModuleProtocol, False otherwise
+        
+        Note:
+            Type hint is Union[ModuleProtocol, Any] because we're validating
+            unknown modules at runtime. If it passes, it's a ModuleProtocol.
+        """
+        return (
+            hasattr(module, "router") and 
+            isinstance(module.router, APIRouter)
+        )
+    
     def validate_module(self, module: Any, module_path: str) -> bool:
         """
-        Validate that module has required router attribute.
+        Validate that module follows ModuleProtocol.
         
         Single Responsibility: Only validates.
+        
+        Uses check_protocol_compliance() to verify ModuleProtocol requirements:
+        1. Module has 'router' attribute
+        2. Router is an instance of APIRouter
         
         Args:
             module: Module object to validate
@@ -80,14 +106,19 @@ class ModuleLoader:
         Returns:
             True if valid, False otherwise
         """
-        if not hasattr(module, "router"):
-            self.logger.warning(f"Module {module_path} has no router")
-            return False
-        
-        if not isinstance(module.router, APIRouter):
-            self.logger.warning(
-                f"Module {module_path} router is not an APIRouter instance"
-            )
+        # Use protocol compliance check
+        if not self.check_protocol_compliance(module):
+            # Provide detailed error message
+            if not hasattr(module, "router"):
+                self.logger.warning(
+                    f"Module {module_path} does not follow ModuleProtocol: "
+                    f"missing 'router' attribute"
+                )
+            else:
+                self.logger.warning(
+                    f"Module {module_path} does not follow ModuleProtocol: "
+                    f"'router' must be an APIRouter instance, got {type(module.router).__name__}"
+                )
             return False
         
         return True
