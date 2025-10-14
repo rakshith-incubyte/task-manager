@@ -18,7 +18,7 @@ task-manager/
 - **Language**: Python 3.14+
 - **Build Tool**: Poetry
 - **Package Manager**: Poetry Core 2.0.0+
-- **Framework**: FastAPI
+- **Backend Framework**: FastAPI
 
 ### Project Configuration
 - **Package Name**: backend

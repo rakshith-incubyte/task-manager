@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
     "fastapi[all] (>=0.115.0,<0.120.0)",
     "pydantic (>=2.0.0,<3.0.0)",
+    "pydantic-settings (>=2.0.0,<3.0.0)",
     "uvicorn[standard] (>=0.37.0,<0.38.0)",
     "pytest (>=8.4.2,<9.0.0)",
     "httpx (>=0.28.1,<0.29.0)"
@@ -22,6 +23,10 @@ packages = [{include = "app"}]
 filterwarnings = [
     "ignore::UserWarning:fastapi._compat.v1"
 ]
+testpaths = ["tests", "app/modules"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 addopts = [
     "--cov=app",
     "--cov-report=term-missing",
@@ -41,7 +46,10 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
-    "@abstractmethod"
+    "@abstractmethod",
+    "\\.\\.\\.",  # Exclude ellipsis (...) in Protocol definitions
+    "@(abc\\.)?abstractmethod",
+    "class .*\\(Protocol\\):",
 ]
 
 [build-system]
