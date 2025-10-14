@@ -10,7 +10,7 @@ app = FastAPI(
 @app.get("/")
 async def root():
     """Root endpoint to verify API is running"""
-    return {"message": "Task Manager API is running"}
+    return {"message": "Hello, World!"}
 
 
 @app.get("/health")
