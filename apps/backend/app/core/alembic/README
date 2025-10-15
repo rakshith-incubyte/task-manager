@@ -1,0 +1,40 @@
+Alembic Database Migrations
+
+Located at: app/core/alembic/
+Configuration: alembic.ini (at project root)
+
+## Common Commands
+
+All commands should be run from the project root (apps/backend/):
+
+### Create a new migration
+```bash
+alembic revision --autogenerate -m "description of changes"
+```
+
+### Apply migrations
+```bash
+alembic upgrade head
+```
+
+### Rollback one migration
+```bash
+alembic downgrade -1
+```
+
+### View migration history
+```bash
+alembic history
+```
+
+### View current revision
+```bash
+alembic current
+```
+
+## How It Works
+
+1. Models are automatically discovered from modules in INSTALLED_MODULES
+2. Each module can have a models.py file with SQLAlchemy models
+3. Alembic detects changes and generates migrations
+4. Migrations are stored in app/core/alembic/versions/

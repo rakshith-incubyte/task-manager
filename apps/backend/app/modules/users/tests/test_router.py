@@ -1,42 +1,31 @@
 """Tests for user API endpoints."""
 
 import pytest
-import tempfile
-import os
-from unittest.mock import patch
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
+
 from app.main import create_app
 from app.core.logger import NullLogger
-from app.core.persistence import JSONPersistence
-from app.modules.users.repository import UserRepository
-from app.modules.users.service import UserService
+from app.core.database import get_db
 
 
-@pytest.fixture
-def temp_json_file():
-    """Create temporary JSON file for testing."""
-    fd, path = tempfile.mkstemp(suffix='.json')
-    os.close(fd)
-    yield path
-    if os.path.exists(path):
-        os.unlink(path)
-
-
-@pytest.fixture
-def client(temp_json_file):
-    """Create test client with temporary storage."""
-    from app.modules.users.router import get_user_service
-    
+@pytest.fixture(scope="function")
+def client(test_engine):
+    """Create test client with test database."""
     app = create_app(logger=NullLogger())
     
-    # Override the dependency to use temp file
-    def get_test_user_service():
-        def db_factory(collection: str):
-            return JSONPersistence(temp_json_file, collection)
-        return UserService(db_factory)
+    # Create session factory
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
     
-    # Override dependency
-    app.dependency_overrides[get_user_service] = get_test_user_service
+    # Override the get_db dependency
+    def override_get_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+    
+    app.dependency_overrides[get_db] = override_get_db
     
     yield TestClient(app)
     

@@ -21,9 +21,9 @@ class Settings(BaseSettings):
     cors_allow_methods: List[str] = ["*"]
     cors_allow_headers: List[str] = ["*"]
     
-    # Database Configuration
-    database_path: str = "data/db.json"
-    persistence_class: str = "JSONPersistence"  # Can be changed to "PostgreSQLPersistence"
+    # Database Configuration (SQLAlchemy + PostgreSQL)
+    database_url: str = "postgresql://postgres:postgres@localhost:5432/taskmanager"
+    database_echo: bool = False  # Set to True to log SQL queries
     
     model_config = {
         "env_file": ".env",
@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 INSTALLED_MODULES = [
     "app.modules.health",
     "app.modules.users",
+    "app.modules.tasks"
 ]
 
 

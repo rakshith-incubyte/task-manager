@@ -1,30 +1,18 @@
 """Tests for user service."""
 
 import pytest
-import tempfile
-import os
 from fastapi import HTTPException
-from app.core.persistence import JSONPersistence
+
 from app.modules.users.repository import UserRepository
 from app.modules.users.service import UserService
 from app.modules.users.schemas import UserCreate, UserUpdate
 
 
 @pytest.fixture
-def temp_json_file():
-    """Create temporary JSON file for testing."""
-    fd, path = tempfile.mkstemp(suffix='.json')
-    os.close(fd)
-    yield path
-    os.unlink(path)
-
-
-@pytest.fixture
-def service(temp_json_file):
-    """Create service with temporary storage."""
-    def db_factory(collection: str):
-        return JSONPersistence(temp_json_file, collection)
-    return UserService(db_factory)
+def service(db_session):
+    """Create service with test database."""
+    repository = UserRepository(db_session)
+    return UserService(repository)
 
 
 class TestUserService:
@@ -143,6 +131,21 @@ class TestUserService:
         assert updated.username == "jane_doe"
         assert updated.email == created.email  # Unchanged
     
+    def test_update_user_with_password(self, service):
+        """Test updating user with new password."""
+        user_data = UserCreate(
+            username="john_doe",
+            email="john@example.com",
+            password="Pass@123"
+        )
+        created = service.register_user(user_data)
+        
+        update_data = UserUpdate(password="NewPass@456")
+        updated = service.update_user(created.id, update_data)
+        
+        assert updated is not None
+        assert updated.username == created.username
+    
     def test_update_user_nonexistent(self, service):
         """Test updating nonexistent user raises 404."""
         update_data = UserUpdate(username="new_name")
@@ -151,6 +154,7 @@ class TestUserService:
             service.update_user("nonexistent-id", update_data)
         
         assert exc_info.value.status_code == 404
+        assert "not found" in exc_info.value.detail
     
     def test_update_user_duplicate_username(self, service):
         """Test that updating to duplicate username is rejected."""

@@ -28,14 +28,14 @@ class UserService:
     - Database operations (that's in repository)
     """
     
-    def __init__(self, db_factory):
+    def __init__(self, repository: UserRepository):
         """
-        Initialize service with database factory.
+        Initialize service with repository.
         
         Args:
-            db_factory: Factory function to create persistence instances
+            repository: User repository instance
         """
-        self.repository = UserRepository(db_factory)
+        self.repository = repository
     
     def _hash_password(self, password: str) -> str:
         """
@@ -191,12 +191,6 @@ class UserService:
         
         # Delegate to repository
         updated_user = self.repository.update(user_id, user_data, hashed_password)
-        
-        if not updated_user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID '{user_id}' not found"
-            )
         
         return updated_user
     

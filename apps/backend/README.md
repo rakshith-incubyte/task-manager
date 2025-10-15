@@ -99,6 +99,24 @@ poetry install
 poetry run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+### Database Migrations (Alembic)
+
+```bash
+# Create a new migration (auto-detects model changes)
+alembic revision --autogenerate -m "description of changes"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback one migration
+alembic downgrade -1
+
+# View migration history
+alembic history
+```
+
+**Note**: Migrations are located at `app/core/alembic/`. Models are automatically discovered from modules in `INSTALLED_MODULES`.
+
 ### Run Tests
 
 ```bash

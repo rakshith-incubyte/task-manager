@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from .validations import validate_username_format, validate_password_strength
 
@@ -54,13 +55,16 @@ class UserResponse(UserBase):
     Inherits username and email from UserBase (DRY).
     Adds id and timestamps for API response.
     This is what the API returns - never expose passwords!
+    
+    Note: Pydantic automatically serializes datetime to ISO string in JSON responses.
     """
     
     id: str = Field(description="User ID (UUIDv7)")
-    created_at: str = Field(description="Creation timestamp (ISO format)")
-    updated_at: str | None = Field(default=None, description="Last update timestamp")
+    created_at: datetime = Field(description="Creation timestamp")
+    updated_at: datetime = Field(description="Last update timestamp")
     
     model_config = {
+        "from_attributes": True,  # Allows conversion from SQLAlchemy models
         "json_schema_extra": {
             "example": {
                 "id": "01234567-89ab-cdef-0123-456789abcdef",

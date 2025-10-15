@@ -1,6 +1,7 @@
 """Tests for user schemas."""
 
 import pytest
+from datetime import datetime
 from pydantic import ValidationError
 from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate
 
@@ -100,29 +101,32 @@ class TestUserResponse:
     
     def test_user_response_creation(self):
         """Test creating UserResponse."""
+        created_at = datetime(2025, 10, 14, 12, 0, 0)
         user = UserResponse(
             id="123",
             username="john_doe",
             email="john@example.com",
-            created_at="2025-10-14T12:00:00",
-            updated_at=None
+            created_at=created_at,
+            updated_at=created_at
         )
         assert user.id == "123"
         assert user.username == "john_doe"
         assert user.email == "john@example.com"
-        assert user.created_at == "2025-10-14T12:00:00"
-        assert user.updated_at is None
+        assert user.created_at == created_at
+        assert user.updated_at == created_at
     
     def test_user_response_with_updated_at(self):
         """Test UserResponse with updated_at timestamp."""
+        created_at = datetime(2025, 10, 14, 12, 0, 0)
+        updated_at = datetime(2025, 10, 14, 13, 0, 0)
         user = UserResponse(
             id="123",
             username="john_doe",
             email="john@example.com",
-            created_at="2025-10-14T12:00:00",
-            updated_at="2025-10-14T13:00:00"
+            created_at=created_at,
+            updated_at=updated_at
         )
-        assert user.updated_at == "2025-10-14T13:00:00"
+        assert user.updated_at == updated_at
 
 
 class TestUserUpdate:
@@ -165,6 +169,16 @@ class TestUserUpdate:
         update = UserUpdate()
         assert update.username is None
         assert update.email is None
+        assert update.password is None
+    
+    def test_update_explicit_none_username(self):
+        """Test update with explicit None username."""
+        update = UserUpdate(username=None)
+        assert update.username is None
+    
+    def test_update_explicit_none_password(self):
+        """Test update with explicit None password."""
+        update = UserUpdate(password=None)
         assert update.password is None
     
     def test_update_invalid_username(self):

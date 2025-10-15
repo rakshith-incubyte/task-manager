@@ -5,33 +5,36 @@ Defines contracts for UserRepository and UserService.
 Following Dependency Inversion Principle - depend on abstractions, not implementations.
 """
 
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
 from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate
+
+if TYPE_CHECKING:
+    from app.modules.users.models import User
 
 
 class UserRepositoryProtocol(Protocol):
     """
-    Interface for user data access layer.
+    Interface for user data access layer using SQLAlchemy ORM.
     """
     
     def create(self, user_id: str, user_data: UserCreate, hashed_password: str) -> UserResponse:
-        """Create a new user in persistence layer."""
+        """Create a new user in database."""
         ...
     
     def get_by_id(self, user_id: str) -> UserResponse | None:
-        """Get user by ID."""
+        """Get user by ID (without password)."""
         ...
     
-    def get_by_username(self, username: str) -> dict | None:
-        """Get user by username (returns raw dict for existence check)."""
+    def get_by_username(self, username: str) -> "User | None":
+        """Get user by username (returns User model with password for auth)."""
         ...
     
-    def get_by_email(self, email: str) -> dict | None:
-        """Get user by email (returns raw dict for existence check)."""
+    def get_by_email(self, email: str) -> "User | None":
+        """Get user by email (returns User model for uniqueness check)."""
         ...
     
     def get_all(self) -> list[UserResponse]:
-        """Get all users."""
+        """Get all users (without passwords)."""
         ...
     
     def update(self, user_id: str, user_data: UserUpdate, hashed_password: str | None) -> UserResponse | None:

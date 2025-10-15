@@ -5,9 +5,12 @@ Handles HTTP requests and responses for user operations.
 Depends on UserServiceProtocol (abstraction), not concrete implementation.
 """
 
-from fastapi import APIRouter, Depends, status, Request
-from typing import Annotated, Callable
+from fastapi import APIRouter, Depends, status
+from typing import Annotated
+from sqlalchemy.orm import Session
 
+from app.core.database import get_db
+from app.modules.users.repository import UserRepository
 from app.modules.users.service import UserService
 from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate
 
@@ -15,21 +18,20 @@ from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-def get_user_service(request: Request) -> UserService:
+def get_user_service(db: Session = Depends(get_db)) -> UserService:
     """
     Dependency injection for UserService.
     
-    Service receives the database factory and creates its own repository.
-    Repository defines which collection it uses.
+    Creates repository with database session and injects into service.
     
     Args:
-        request: FastAPI request object
+        db: SQLAlchemy database session
     
     Returns:
         UserService instance
     """
-    db_factory = request.app.state.create_db
-    return UserService(db_factory)
+    repository = UserRepository(db)
+    return UserService(repository)
 
 
 # Type alias for cleaner code

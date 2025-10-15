@@ -1,10 +1,5 @@
 """
 Module/Feature management - Django-style INSTALLED_APPS.
-
-This module handles dynamic loading and registration of feature modules.
-Following SOLID principles:
-- SRP: Each function has one responsibility
-- DIP: Depends on abstractions (LoggerProtocol), not concrete implementations
 """
 
 from typing import List, Any, Union
@@ -18,17 +13,6 @@ from app.config import INSTALLED_MODULES
 class ModuleLoader:
     """
     Handles loading and registration of modules.
-    
-    Why a class?
-    - Encapsulates module loading logic
-    - Can inject dependencies (logger)
-    - Easy to test with mock logger
-    - Single Responsibility: only loads modules
-    
-    This follows:
-    - SRP: Only responsible for module loading
-    - DIP: Depends on LoggerProtocol (abstraction)
-    - OCP: Can extend without modifying
     """
     
     def __init__(self, logger: LoggerProtocol = default_logger):
@@ -37,19 +21,12 @@ class ModuleLoader:
         
         Args:
             logger: Logger implementation (injected dependency)
-        
-        Why inject logger?
-        - Dependency Inversion: we depend on interface, not concrete logger
-        - Testability: tests can inject NullLogger or mock
-        - Flexibility: can swap logging implementation
         """
         self.logger = logger
     
     def import_module(self, module_path: str) -> Any:
         """
         Import a module by its path.
-        
-        Single Responsibility: Only imports, doesn't register.
         
         Args:
             module_path: Dotted path to module (e.g., "app.modules.health")
@@ -87,13 +64,6 @@ class ModuleLoader:
     def validate_module(self, module: Any, module_path: str) -> bool:
         """
         Validate that module follows ModuleProtocol.
-        
-        Single Responsibility: Only validates.
-        
-        Uses check_protocol_compliance() to verify ModuleProtocol requirements:
-        1. Module has 'router' attribute
-        2. Router is an instance of APIRouter
-        
         Args:
             module: Module object to validate
             module_path: Module path (for logging)
@@ -125,8 +95,6 @@ class ModuleLoader:
     ) -> bool:
         """
         Register a single module with the FastAPI app.
-        
-        Single Responsibility: Coordinates import, validate, register.
         
         Args:
             app: FastAPI application instance
@@ -172,9 +140,7 @@ def register_modules(
     logger: LoggerProtocol = default_logger
 ) -> None:
     """
-    Convenience function to register all installed modules.
-    
-    This is the public API - keeps backward compatibility.
+    Utility function to register all installed modules.
     
     Args:
         app: FastAPI application instance

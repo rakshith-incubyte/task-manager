@@ -1,5 +1,5 @@
 
-from typing import Optional, Callable
+from typing import Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,8 +7,6 @@ from app.config import Settings, settings as default_settings
 from app.core.modules import register_modules
 from app.core.interfaces import LoggerProtocol
 from app.core.logger import default_logger
-from app.core.persistence import PersistenceProtocol
-import importlib
 
 
 def configure_cors(app: FastAPI, config: Settings) -> None:
@@ -64,25 +62,7 @@ def create_app(
         debug=config.debug,
     )
     
-    # Initialize database factory (application state)
-    # Dynamically load persistence class from config
-    # To swap to PostgreSQL: just change config.persistence_class = "PostgreSQLPersistence"
-    
-    # Import the persistence class dynamically
-    persistence_module = importlib.import_module("app.core.persistence")
-    persistence_class = getattr(persistence_module, config.persistence_class)
-    
-    def create_persistence(collection: str) -> PersistenceProtocol:
-        """
-        Generic factory function to create persistence instances.
-        
-        Uses the persistence class specified in config.
-        To switch databases, just change config.persistence_class!
-        """
-        return persistence_class.create_instance(config.database_path, collection)
-    
-    application.state.create_db = create_persistence
-    
+    # Configure CORS and register modules
     configure_cors(application, config)
     register_modules(application, logger=logger)
     

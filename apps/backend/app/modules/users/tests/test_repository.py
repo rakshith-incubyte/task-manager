@@ -1,28 +1,15 @@
 """Tests for user repository."""
 
 import pytest
-import tempfile
-import os
-from app.core.persistence import JSONPersistence
+
 from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import UserCreate, UserUpdate
 
 
 @pytest.fixture
-def temp_json_file():
-    """Create temporary JSON file for testing."""
-    fd, path = tempfile.mkstemp(suffix='.json')
-    os.close(fd)
-    yield path
-    os.unlink(path)
-
-
-@pytest.fixture
-def repository(temp_json_file):
-    """Create repository with temporary storage."""
-    def db_factory(collection: str):
-        return JSONPersistence(temp_json_file, collection)
-    return UserRepository(db_factory)
+def repository(db_session):
+    """Create repository with test database session."""
+    return UserRepository(db_session)
 
 
 class TestUserRepository:
@@ -42,7 +29,7 @@ class TestUserRepository:
         assert user.username == "john_doe"
         assert user.email == "john@example.com"
         assert user.created_at is not None
-        assert user.updated_at is None
+        assert user.updated_at is not None
     
     def test_get_by_id_existing(self, repository):
         """Test getting existing user by ID."""
@@ -73,16 +60,16 @@ class TestUserRepository:
         )
         repository.create("user-123", user_data, "hashed_password")
         
-        user_dict = repository.get_by_username("john_doe")
+        user_model = repository.get_by_username("john_doe")
         
-        assert user_dict is not None
-        assert user_dict["username"] == "john_doe"
-        assert "password" in user_dict  # Raw dict includes password
+        assert user_model is not None
+        assert user_model.username == "john_doe"
+        assert user_model.password == "hashed_password"  # User model includes password
     
     def test_get_by_username_nonexistent(self, repository):
         """Test finding nonexistent username returns None."""
-        user_dict = repository.get_by_username("nonexistent")
-        assert user_dict is None
+        user_model = repository.get_by_username("nonexistent")
+        assert user_model is None
     
     def test_get_by_email_existing(self, repository):
         """Test finding user by email."""
@@ -93,15 +80,15 @@ class TestUserRepository:
         )
         repository.create("user-123", user_data, "hashed_password")
         
-        user_dict = repository.get_by_email("john@example.com")
+        user_model = repository.get_by_email("john@example.com")
         
-        assert user_dict is not None
-        assert user_dict["email"] == "john@example.com"
+        assert user_model is not None
+        assert user_model.email == "john@example.com"
     
     def test_get_by_email_nonexistent(self, repository):
         """Test finding nonexistent email returns None."""
-        user_dict = repository.get_by_email("nonexistent@example.com")
-        assert user_dict is None
+        user_model = repository.get_by_email("nonexistent@example.com")
+        assert user_model is None
     
     def test_get_all_empty(self, repository):
         """Test getting all users when none exist."""

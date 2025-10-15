@@ -1,46 +1,29 @@
 """
-User repository - data access layer.
+User repository - SQLAlchemy ORM data access layer.
 """
 
-from datetime import datetime
-from app.modules.users.interfaces import UserRepositoryProtocol
-from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate
+from sqlalchemy.orm import Session
+from app.modules.users.schemas import UserCreate
+from app.modules.users.schemas import UserResponse
+from app.modules.users.schemas import UserUpdate
+from app.modules.users.models import User
 
 
-def dict_to_user_response(user_dict: dict) -> UserResponse:
+class UserRepository:
     """
-    Args:
-        user_dict: User data from persistence layer
+    Repository for User entity using SQLAlchemy ORM.
     
-    Returns:
-        UserResponse without password
-    """
-    return UserResponse(
-        id=user_dict["id"],
-        username=user_dict["username"],
-        email=user_dict["email"],
-        created_at=user_dict["created_at"],
-        updated_at=user_dict.get("updated_at")
-    )
-
-
-class UserRepository(UserRepositoryProtocol):
-    """
-    User data access layer.
-    
-    Manages the "users" table/collection in the database.
+    Handles all database operations for users.
     """
     
-    TABLE_NAME = "users"
-    
-    def __init__(self, db_factory):
+    def __init__(self, db: Session):
         """
-        Initialize repository with database factory.
+        Initialize repository with database session.
         
         Args:
-            db_factory: Factory function to create persistence instances
+            db: SQLAlchemy session
         """
-        self.db = db_factory(self.TABLE_NAME)
+        self.db = db
     
     def create(
         self,
@@ -59,21 +42,24 @@ class UserRepository(UserRepositoryProtocol):
         Returns:
             Created user (without password)
         """
-        now = datetime.now().isoformat()
+        user = User(
+            id=user_id,
+            username=user_data.username,
+            email=user_data.email,
+            password=hashed_password
+        )
         
-        user_dict = {
-            "id": user_id,
-            "username": user_data.username,
-            "email": user_data.email,
-            "password": hashed_password,  # Stored but never returned
-            "created_at": now,
-            "updated_at": None
-        }
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
         
-        self.db.create(user_id, user_dict)
-        
-        # Return without password (using DRY helper)
-        return dict_to_user_response(user_dict)
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        )
     
     def get_by_id(self, user_id: str) -> UserResponse | None:
         """
@@ -85,42 +71,48 @@ class UserRepository(UserRepositoryProtocol):
         Returns:
             User data (without password) or None if not found
         """
-        user_dict = self.db.get(user_id)
+        user = self.db.query(User).filter(User.id == user_id).first()
         
-        if not user_dict:
+        if not user:
             return None
         
-        return dict_to_user_response(user_dict)
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        )
     
-    def get_by_username(self, username: str) -> dict | None:
+    def get_by_username(self, username: str) -> User | None:
         """
         Find user by username.
         
-        Returns raw dict (includes password) for internal use only.
-        Used by service layer to check uniqueness.
+        Returns User model (includes password) for internal use only.
+        Used by service layer for authentication and uniqueness checks.
         
         Args:
             username: Username to search for
         
         Returns:
-            User dict (with password) or None
+            User model (with password) or None
         """
-        return self.db.find_by_field("username", username)
+        return self.db.query(User).filter(User.username == username).first()
     
-    def get_by_email(self, email: str) -> dict | None:
+    def get_by_email(self, email: str) -> User | None:
         """
         Find user by email.
         
-        Returns raw dict (includes password) for internal use only.
-        Used by service layer to check uniqueness.
+        Returns User model (includes password) for internal use only.
+        Used by service layer for uniqueness checks.
         
         Args:
             email: Email to search for
         
         Returns:
-            User dict (with password) or None
+            User model (with password) or None
         """
-        return self.db.find_by_field("email", email)
+        return self.db.query(User).filter(User.email == email).first()
     
     def get_all(self) -> list[UserResponse]:
         """
@@ -129,9 +121,18 @@ class UserRepository(UserRepositoryProtocol):
         Returns:
             List of all users (without passwords)
         """
-        users = self.db.get_all()
+        users = self.db.query(User).all()
         
-        return [dict_to_user_response(user) for user in users]
+        return [
+            UserResponse(
+                id=user.id,
+                username=user.username,
+                email=user.email,
+                created_at=user.created_at,
+                updated_at=user.updated_at
+            )
+            for user in users
+        ]
     
     def update(
         self,
@@ -150,26 +151,31 @@ class UserRepository(UserRepositoryProtocol):
         Returns:
             Updated user or None if not found
         """
-        existing = self.db.get(user_id)
+        user = self.db.query(User).filter(User.id == user_id).first()
         
-        if not existing:
+        if not user:
             return None
         
         # Update only provided fields
         if user_data.username is not None:
-            existing["username"] = user_data.username
+            user.username = user_data.username
         
         if user_data.email is not None:
-            existing["email"] = user_data.email
+            user.email = user_data.email
         
         if hashed_password is not None:
-            existing["password"] = hashed_password
+            user.password = hashed_password
         
-        existing["updated_at"] = datetime.now().isoformat()
+        self.db.commit()
+        self.db.refresh(user)
         
-        self.db.update(user_id, existing)
-        
-        return dict_to_user_response(existing)
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        )
     
     def delete(self, user_id: str) -> bool:
         """
@@ -181,4 +187,12 @@ class UserRepository(UserRepositoryProtocol):
         Returns:
             True if deleted, False if not found
         """
-        return self.db.delete(user_id)
+        user = self.db.query(User).filter(User.id == user_id).first()
+        
+        if not user:
+            return False
+        
+        self.db.delete(user)
+        self.db.commit()
+        
+        return True
