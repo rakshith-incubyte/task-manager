@@ -2,8 +2,14 @@
 
 A clean, maintainable FastAPI backend following **strict SOLID principles** and clean architecture
 
+## Features
 
-
+- ✅ **User Management** - Complete CRUD operations with authentication
+- ✅ **Task Management** - Create, read, update, delete tasks with owner tracking
+- ✅ **Health Checks** - System health monitoring
+- ✅ **Database Integration** - SQLAlchemy ORM with SQLite
+- ✅ **Testing** - Comprehensive test coverage with pytest
+- ✅ **API Documentation** - Auto-generated Swagger/ReDoc docs
 
 ## Project Structure
 
@@ -29,6 +35,38 @@ graph LR
                     h_test["test_health.py"]
                 end
             end
+            
+            subgraph users["users/"]
+                u_init["__init__.py"]
+                u_router["router.py"]
+                u_service["service.py"]
+                u_repository["repository.py"]
+                u_models["models.py"]
+                u_schemas["schemas.py"]
+                u_interfaces["interfaces.py"]
+                u_validations["validations.py"]
+                subgraph u_tests["tests/"]
+                    u_test_router["test_router.py"]
+                    u_test_service["test_service.py"]
+                    u_test_repository["test_repository.py"]
+                    u_test_schemas["test_schemas.py"]
+                    u_conftest["conftest.py"]
+                end
+            end
+            
+            subgraph tasks["tasks/"]
+                t_init["__init__.py"]
+                t_router["router.py"]
+                t_service["service.py"]
+                t_repository["repository.py"]
+                t_models["models.py"]
+                t_schemas["schemas.py"]
+                t_interfaces["interfaces.py"]
+                subgraph t_tests["tests/"]
+                    t_test_router["test_router.py"]
+                    t_conftest["conftest.py"]
+                end
+            end
         end
     end
     
@@ -37,13 +75,18 @@ graph LR
         test_logger["test_logger.py"]
         test_loader["test_module_loader.py"]
         test_interfaces["test_interfaces.py"]
+        test_database["test_database.py"]
     end
     
     style app fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px
     style core fill:#E3F2FD,stroke:#2196F3,stroke-width:2px
     style mods fill:#FFF3E0,stroke:#FF9800,stroke-width:2px
     style health fill:#FFE0B2,stroke:#FF9800,stroke-width:1px
+    style users fill:#FFE0B2,stroke:#FF9800,stroke-width:1px
+    style tasks fill:#FFE0B2,stroke:#FF9800,stroke-width:1px
     style h_tests fill:#F3E5F5,stroke:#9C27B0,stroke-width:1px
+    style u_tests fill:#F3E5F5,stroke:#9C27B0,stroke-width:1px
+    style t_tests fill:#F3E5F5,stroke:#9C27B0,stroke-width:1px
     style tests fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px
 ```
 
@@ -93,6 +136,13 @@ graph LR
 poetry install
 ```
 
+### Database Setup
+
+```bash
+# Initialize database (creates tables)
+poetry run python -c "from app.core.database import init_db; init_db()"
+```
+
 ### Run Development Server
 
 ```bash
@@ -121,13 +171,17 @@ alembic history
 
 ```bash
 # Run all tests with coverage
-poetry run pytest
+poetry run pytest --cov
 
-# Run specific test file
-poetry run pytest tests/test_hello_world_api.py -v
+# Run specific module tests
+poetry run pytest app/modules/users/tests/ --cov=app.modules.users -v
+poetry run pytest app/modules/tasks/tests/ --cov=app.modules.tasks -v
+
+# Run core tests
+poetry run pytest tests/ -v
 
 # View coverage report
-poetry run pytest --cov-report=html
+poetry run pytest --cov --cov-report=html
 open htmlcov/index.html
 ```
 
@@ -149,16 +203,21 @@ APP_DESCRIPTION="A task management API built with FastAPI"
 APP_VERSION="0.1.0"
 DEBUG=false
 
-# CORS Configuration (NEW!)
+# Database Configuration
+DATABASE_URL="sqlite:///./data/task_manager.db"
+DATABASE_ECHO=false
+
+# CORS Configuration
 CORS_ORIGINS=["http://localhost:3000", "https://myapp.com"]
 CORS_ALLOW_CREDENTIALS=true
 CORS_ALLOW_METHODS=["*"]
 CORS_ALLOW_HEADERS=["*"]
 ```
 
-**Why configurable CORS?**
-- Production: Restrict to specific domains
-- Development: Allow localhost
+**Configuration Features:**
+- **Database**: SQLite by default, easily switch to PostgreSQL/MySQL
+- **CORS**: Configurable for production/development
+- **Debug Mode**: Toggle detailed error messages
 - No code changes needed - just update `.env`
 
 ## Adding New Modules
@@ -203,11 +262,12 @@ async def create_user(user: UserCreate):
 ### 3. Register Module
 
 ```python
-# app/core/modules.py
+# app/config.py
 INSTALLED_MODULES = [
     "app.modules.health",
+    "app.modules.users",
     "app.modules.tasks",
-    "app.modules.users",  # Add your new module
+    "app.modules.your_module",  # Add your new module
 ]
 ```
 
@@ -280,9 +340,29 @@ assert test_app.title == "Test API"
 
 
 
+## 📚 API Endpoints
+
+### Health Module
+- `GET /health` - Check API health status
+
+### Users Module
+- `POST /users/` - Register new user
+- `GET /users/{user_id}` - Get user by ID
+- `GET /users/` - Get all users
+- `PUT /users/{user_id}` - Update user
+- `DELETE /users/{user_id}` - Delete user
+
+### Tasks Module
+- `POST /tasks/` - Create new task (requires `owner` header)
+- `GET /tasks/{task_id}` - Get task by ID
+- `GET /tasks/` - Get all tasks
+- `PUT /tasks/{task_id}` - Update task (requires `owner` header)
+- `DELETE /tasks/{task_id}` - Delete task (returns 204 No Content)
+
 ## 📚 Additional Documentation
 
-- **[app/modules/README.md](./app/modules/README.md)** - Step-by-step module creation guide
+- **[API Documentation](http://127.0.0.1:8000/docs)** - Interactive Swagger UI
+- **[ReDoc](http://127.0.0.1:8000/redoc)** - Alternative API documentation
 
 ## 🏗️ Architecture Overview
 
