@@ -6,11 +6,14 @@ Depends on UserRepositoryProtocol (abstraction), not concrete implementation.
 """
 
 import uuid
+from datetime import datetime, timedelta, timezone
+import jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
 
+from app.config import settings
 from app.modules.users.repository import UserRepository
-from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate
+from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate, UserTokenResponse
 
 # Configure password hashing context with Argon2
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -75,6 +78,24 @@ class UserService:
             UUIDv7 as string
         """
         return str(uuid.uuid7())
+
+    def verify_jwt_token(self, token: str) -> dict:
+        """
+        Verify and decode JWT token.
+        
+        Delegates to core auth utility for token verification.
+        
+        Args:
+            token: JWT token string
+        
+        Returns:
+            Decoded token payload containing user information
+        
+        Raises:
+            HTTPException: If token is invalid or expired
+        """
+        from app.core.auth import verify_jwt_token as core_verify_token
+        return core_verify_token(token)
     
     def register_user(self, user_data: UserCreate) -> UserResponse:
         """
@@ -119,6 +140,88 @@ class UserService:
         
         # Delegate to repository
         return self.repository.create(user_id, user_data, hashed_password)
+
+    def get_user_token(self, username: str, password: str) -> UserTokenResponse:
+        """
+        Authenticate user and generate JWT tokens.
+        
+        Business rules:
+        1. User must exist
+        2. Password must match
+        3. Generate both access and refresh tokens
+        
+        Args:
+            username: User's username
+            password: Plain text password
+        
+        Returns:
+            UserTokenResponse with user_id, access_token, and refresh_token
+        
+        Raises:
+            HTTPException: If authentication fails
+        """
+        # Get user by username (includes password for verification)
+        user = self.repository.get_by_username(username)
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password"
+            )
+        
+        # Verify password
+        if not self._verify_password(password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password"
+            )
+        
+        # Generate tokens
+        access_token = self._generate_access_token(user.id, user.username)
+        
+        # Generate refresh token (for future use)
+        refresh_token = self._generate_refresh_token(user.id, user.username)
+        
+        # Return structured response
+        return UserTokenResponse(
+            user_id=user.id,
+            access_token=access_token,
+            refresh_token=refresh_token
+        )
+    
+    def _generate_access_token(self, user_id: str, username: str) -> str:
+        """
+        Generate JWT access token.
+        
+        Args:
+            user_id: User ID
+            username: Username
+            
+        Returns:
+            JWT access token string
+        """
+        from app.modules.users.security import create_access_token
+        from datetime import timedelta
+        
+        access_token_expires = timedelta(minutes=settings.access_token_expires_in)
+        return create_access_token(user_id, access_token_expires)
+    
+    def _generate_refresh_token(self, user_id: str, username: str) -> str:
+        """
+        Generate JWT refresh token.
+        
+        Args:
+            user_id: User ID
+            username: Username
+            
+        Returns:
+            JWT refresh token string
+        """
+        from app.modules.users.security import create_refresh_token
+        from datetime import timedelta
+        
+        refresh_token_expires = timedelta(minutes=settings.refresh_token_expires_in)
+        return create_refresh_token(user_id, refresh_token_expires)
     
     def get_user(self, user_id: str) -> UserResponse:
         """
