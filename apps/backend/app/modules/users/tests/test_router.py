@@ -220,3 +220,150 @@ class TestUserEndpoints:
         """Test deleting nonexistent user."""
         response = client.delete("/users/nonexistent-id")
         assert response.status_code == 404
+    
+    def test_get_user_token_success(self, client):
+        """Test successful authentication and token generation."""
+        # Create user
+        client.post(
+            "/users/",
+            json={
+                "username": "john_doe",
+                "email": "john@example.com",
+                "password": "Pass@123"
+            }
+        )
+        
+        # Login
+        response = client.post(
+            "/users/auth/token",
+            json={
+                "username": "john_doe",
+                "password": "Pass@123"
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "user_id" in data
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert len(data["access_token"]) > 0
+        assert len(data["refresh_token"]) > 0
+    
+    def test_get_user_token_invalid_username(self, client):
+        """Test authentication with invalid username."""
+        response = client.post(
+            "/users/auth/token",
+            json={
+                "username": "nonexistent_user",
+                "password": "Pass@123"
+            }
+        )
+        
+        assert response.status_code == 401
+        assert "Invalid username or password" in response.json()["detail"]
+    
+    def test_get_user_token_invalid_password(self, client):
+        """Test authentication with invalid password."""
+        # Create user
+        client.post(
+            "/users/",
+            json={
+                "username": "john_doe",
+                "email": "john@example.com",
+                "password": "Pass@123"
+            }
+        )
+        
+        # Try to login with wrong password
+        response = client.post(
+            "/users/auth/token",
+            json={
+                "username": "john_doe",
+                "password": "WrongPass@123"
+            }
+        )
+        
+        assert response.status_code == 401
+        assert "Invalid username or password" in response.json()["detail"]
+    
+    def test_get_user_token_missing_credentials(self, client):
+        """Test authentication with missing credentials."""
+        response = client.post(
+            "/users/auth/token",
+            json={}
+        )
+        
+        assert response.status_code == 422  # Validation error
+    
+    def test_get_current_user_success(self, client):
+        """Test getting current user with valid token."""
+        # Create and login user
+        client.post(
+            "/users/",
+            json={
+                "username": "john_doe",
+                "email": "john@example.com",
+                "password": "Pass@123"
+            }
+        )
+        
+        login_response = client.post(
+            "/users/auth/token",
+            json={
+                "username": "john_doe",
+                "password": "Pass@123"
+            }
+        )
+        access_token = login_response.json()["access_token"]
+        
+        # Get current user
+        response = client.get(
+            "/users/me",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["username"] == "john_doe"
+        assert data["email"] == "john@example.com"
+        assert "password" not in data
+    
+    def test_get_current_user_no_token(self, client):
+        """Test getting current user without token."""
+        response = client.get("/users/me")
+        
+        assert response.status_code == 422  # Missing required header
+    
+    def test_get_current_user_invalid_token(self, client):
+        """Test getting current user with invalid token."""
+        response = client.get(
+            "/users/me",
+            headers={"Authorization": "Bearer invalid_token_here"}
+        )
+        
+        assert response.status_code == 401
+        assert "Invalid token" in response.json()["detail"]
+    
+    def test_get_current_user_expired_token(self, client):
+        """Test getting current user with expired token."""
+        # Create an expired token (you might need to mock this in real scenario)
+        expired_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMyIsImV4cCI6MTYwMDAwMDAwMH0.invalid"
+        
+        response = client.get(
+            "/users/me",
+            headers={"Authorization": f"Bearer {expired_token}"}
+        )
+        
+        assert response.status_code == 401
+    
+    def test_get_current_user_invalid_scheme(self, client):
+        """Test getting current user with invalid auth scheme."""
+        response = client.get(
+            "/users/me",
+            headers={"Authorization": "Basic some_token"}
+        )
+        
+        assert response.status_code == 401
+        assert "Invalid authentication scheme" in response.json()["detail"]
+

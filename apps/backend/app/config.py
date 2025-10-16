@@ -1,5 +1,9 @@
-from typing import List, Type
+from typing import List
+from pathlib import Path
 from pydantic_settings import BaseSettings
+
+# Get the backend directory (parent of app directory)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -26,9 +30,15 @@ class Settings(BaseSettings):
     database_echo: bool = False  # Set to True to log SQL queries
     
     model_config = {
-        "env_file": ".env",
+        "env_file": str(BASE_DIR / ".env"),
         "case_sensitive": False,
     }
+    
+    # JWT Configuration
+    secret_key: str = "dev-secret-key-change-in-production"  # Override via SECRET_KEY env var
+    algorithm: str = "HS256"
+    access_token_expires_in: int = 30  # minutes
+    refresh_token_expires_in: int = 60  # minutes
 
 
 # Installed modules (Django-style INSTALLED_APPS)

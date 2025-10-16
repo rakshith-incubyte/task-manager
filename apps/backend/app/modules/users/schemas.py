@@ -116,3 +116,45 @@ class UserUpdate(BaseModel):
         if v is not None:
             return validate_password_strength(v)
         return v
+
+
+class UserLoginRequest(BaseModel):
+    """
+    Schema for user login request.
+    
+    Contains username and password for authentication.
+    """
+    
+    username: str = Field(description="User's username")
+    password: str = Field(description="User's password")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "username": "john_doe",
+                "password": "Pass@123"
+            }
+        }
+    }
+
+
+class UserTokenResponse(BaseModel):
+    """
+    Schema for JWT token response after authentication.
+    
+    Contains user ID and both access and refresh tokens.
+    """
+    
+    user_id: str = Field(description="User ID (UUIDv7)")
+    access_token: str = Field(description="JWT access token")
+    refresh_token: str = Field(description="JWT refresh token")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "user_id": "01234567-89ab-cdef-0123-456789abcdef",
+                "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+                "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+            }
+        }
+    }

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Header, status
+from fastapi import APIRouter, Depends, status
 from typing import Annotated
 from sqlalchemy.orm import Session
 
+from app.modules.users.security import AuthUser
 from app.core.database import get_db
 from app.modules.tasks.interfaces import TaskServiceProtocol
 from app.modules.tasks.repository import TaskRepository
@@ -30,9 +31,33 @@ TaskServiceDep = Annotated[TaskServiceProtocol, Depends(get_task_service)]
 def create_task(
     task_data: TaskCreate,
     task_service: TaskServiceDep,
-    owner: str = Header(...)
+    current_user: AuthUser
 ) -> TaskResponse:
-    return task_service.create_task(task_data, owner)
+    """
+    Create a new task for the authenticated user.
+    
+    This is a protected route - requires valid JWT token.
+    """
+    return task_service.create_task(task_data, current_user.id)
+
+
+@router.get(
+    "/",
+    response_model=list[TaskResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get all tasks",
+    description="Get all tasks for the authenticated user"
+)
+def get_all_tasks(
+    task_service: TaskServiceDep,
+    current_user: AuthUser
+) -> list[TaskResponse]:
+    """
+    Get all tasks owned by the authenticated user.
+    
+    This is a protected route - requires valid JWT token.
+    """
+    return task_service.get_all_tasks(current_user.id)
 
 
 @router.get(
@@ -40,50 +65,60 @@ def create_task(
     response_model=TaskResponse,
     status_code=status.HTTP_200_OK,
     summary="Get a task by ID",
-    description="Get a task by ID"
+    description="Get a specific task by ID (must be owned by the user)"
 )
 def get_task(
     task_id: str,
     task_service: TaskServiceDep,
+    current_user: AuthUser
 ) -> TaskResponse:
-    return task_service.get_task(task_id)
+    """
+    Get a task by ID for the authenticated user.
+    
+    This is a protected route - requires valid JWT token.
+    User can only access their own tasks.
+    """
+    return task_service.get_task(task_id, current_user.id)
 
-@router.get(
-    "/",
-    response_model=list[TaskResponse],
-    status_code=status.HTTP_200_OK,
-    summary="Get all tasks",
-    description="Get all tasks"
-)
-def get_all_tasks(
-    task_service: TaskServiceDep,
-) -> list[TaskResponse]:
-    return task_service.get_all_tasks()
 
 @router.put(
     "/{task_id}",
     response_model=TaskResponse,
     status_code=status.HTTP_200_OK,
     summary="Update a task",
-    description="Update a task by ID"
+    description="Update a task by ID (must be owned by the user)"
 )
 def update_task(
     task_id: str,
     task_data: TaskUpdate,
     task_service: TaskServiceDep,
-    owner: str = Header(...)
+    current_user: AuthUser
 ) -> TaskResponse:
-    return task_service.update_task(task_id, task_data, owner)
+    """
+    Update a task for the authenticated user.
+    
+    This is a protected route - requires valid JWT token.
+    User can only update their own tasks.
+    """
+    return task_service.update_task(task_id, task_data, current_user.id)
+
 
 @router.delete(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a task",
-    description="Delete a task by ID"
+    description="Delete a task by ID (must be owned by the user)"
 )
 def delete_task(
     task_id: str,
     task_service: TaskServiceDep,
+    current_user: AuthUser
 ):
-    task_service.delete_task(task_id)
+    """
+    Delete a task for the authenticated user.
+    
+    This is a protected route - requires valid JWT token.
+    User can only delete their own tasks.
+    """
+    task_service.delete_task(task_id, current_user.id)
     return None
