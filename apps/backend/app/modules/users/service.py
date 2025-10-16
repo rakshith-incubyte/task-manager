@@ -6,11 +6,14 @@ Depends on UserRepositoryProtocol (abstraction), not concrete implementation.
 """
 
 import uuid
-import bcrypt
+from passlib.context import CryptContext
 from fastapi import HTTPException, status
 
 from app.modules.users.repository import UserRepository
 from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate
+
+# Configure password hashing context with Argon2
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 class UserService:
@@ -39,7 +42,7 @@ class UserService:
     
     def _hash_password(self, password: str) -> str:
         """
-        Hash password using bcrypt.
+        Hash password using Argon2.
         
         Args:
             password: Plain text password
@@ -47,9 +50,20 @@ class UserService:
         Returns:
             Hashed password
         """
-        salt = bcrypt.gensalt()
-        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-        return hashed.decode('utf-8')
+        return pwd_context.hash(password)
+    
+    def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        """
+        Verify a plain password against a hashed password using Argon2.
+        
+        Args:
+            plain_password: Plain text password to verify
+            hashed_password: Hashed password to compare against
+        
+        Returns:
+            True if password matches, False otherwise
+        """
+        return pwd_context.verify(plain_password, hashed_password)
     
     def _generate_user_id(self) -> str:
         """
