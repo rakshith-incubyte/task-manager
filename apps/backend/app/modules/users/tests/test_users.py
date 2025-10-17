@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from unittest.mock import patch
 
 from app.core.database import Base
 from app.main import create_app
@@ -877,3 +878,65 @@ class TestUserEndpoints:
         
         assert response.status_code == 422
         assert "Invalid authentication scheme" in response.json()["detail"]
+
+
+class TestSecurityFunctions:
+    """Unit tests for security functions."""
+
+    def test_create_access_token_default_expires(self):
+        """Test create_access_token with default expiration."""
+        from app.modules.users.security import create_access_token
+        
+        token = create_access_token("user-123")
+        
+        # Should use default expiration from settings
+        assert isinstance(token, str)
+        assert len(token) > 0
+        
+        # Decode to verify it contains expected data
+        import jwt
+        from app.config import settings
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        assert payload["sub"] == "user-123"
+        assert "exp" in payload
+
+    def test_create_refresh_token_default_expires(self):
+        """Test create_refresh_token with default expiration."""
+        from app.modules.users.security import create_refresh_token
+        
+        token = create_refresh_token("user-123")
+        
+        # Should use default expiration from settings
+        assert isinstance(token, str)
+        assert len(token) > 0
+        
+        # Decode to verify it contains expected data
+        import jwt
+        from app.config import settings
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        assert payload["sub"] == "user-123"
+        assert "exp" in payload
+
+    def test_get_current_user_invalid_token(self):
+        """Test get_current_user with invalid token that decodes to None."""
+        from app.modules.users.security import get_current_user
+        
+        # Mock decodeJWT to return None
+        with patch('app.modules.users.security.decodeJWT', return_value=None):
+            with pytest.raises(HTTPException) as exc_info:
+                get_current_user(token="invalid_token")
+            
+            assert exc_info.value.status_code == 401
+            assert "Could not validate credentials" in str(exc_info.value.detail)
+
+    def test_get_current_user_missing_sub_claim(self):
+        """Test get_current_user when token payload missing 'sub' claim."""
+        from app.modules.users.security import get_current_user
+        
+        # Mock decodeJWT to return payload without 'sub'
+        with patch('app.modules.users.security.decodeJWT', return_value={"exp": 1234567890}):
+            with pytest.raises(HTTPException) as exc_info:
+                get_current_user(token="token_without_sub")
+            
+            assert exc_info.value.status_code == 401
+            assert "Could not validate credentials" in str(exc_info.value.detail)

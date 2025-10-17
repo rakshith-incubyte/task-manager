@@ -7,7 +7,9 @@ Depends on UserRepositoryProtocol (abstraction), not concrete implementation.
 
 import uuid
 from datetime import timedelta
+
 from fastapi import HTTPException, status
+import jwt
 
 from app.config import settings
 from app.modules.users.repository import UserRepository
@@ -15,9 +17,6 @@ from app.modules.users.schemas import UserCreate, UserResponse, UserUpdate, User
 
 # Import password context and token functions from security module
 from app.modules.users.security import pwd_context, create_access_token, create_refresh_token
-
-# Import core auth utility
-from app.core.auth import verify_jwt_token as core_verify_token
 
 
 class UserService:
@@ -80,22 +79,6 @@ class UserService:
         """
         return str(uuid.uuid7())
 
-    def verify_jwt_token(self, token: str) -> dict:
-        """
-        Verify and decode JWT token.
-        
-        Delegates to core auth utility for token verification.
-        
-        Args:
-            token: JWT token string
-        
-        Returns:
-            Decoded token payload containing user information
-        
-        Raises:
-            HTTPException: If token is invalid or expired
-        """
-        return core_verify_token(token)
     
     def _validate_user_uniqueness(self, username: str | None, email: str | None, exclude_user_id: str | None = None) -> None:
         """
