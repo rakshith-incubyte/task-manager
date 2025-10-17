@@ -10,6 +10,8 @@ from app.modules.tasks.service import TaskService
 from app.modules.tasks.schemas import TaskCreate
 from app.modules.tasks.schemas import TaskUpdate
 from app.modules.tasks.schemas import TaskResponse
+from app.modules.tasks.schemas import TaskPaginationRequest
+from app.modules.tasks.schemas import TaskPaginationResponse
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -43,21 +45,38 @@ def create_task(
 
 @router.get(
     "/",
-    response_model=list[TaskResponse],
+    response_model=TaskPaginationResponse,
     status_code=status.HTTP_200_OK,
-    summary="Get all tasks",
-    description="Get all tasks for the authenticated user"
+    summary="Get paginated tasks",
+    description="Get paginated tasks for the authenticated user using cursor-based pagination with optional filters"
 )
-def get_all_tasks(
-    task_service: TaskServiceDep,
-    current_user: AuthUser
-) -> list[TaskResponse]:
+def get_tasks(
+    pagination: TaskPaginationRequest = Depends(),
+    task_service: TaskServiceDep = None,
+    current_user: AuthUser = None
+) -> TaskPaginationResponse:
     """
-    Get all tasks owned by the authenticated user.
+    Get paginated tasks for the authenticated user.
+    
+    Uses cursor-based pagination for efficient large dataset handling.
+    Tasks are ordered by creation time (UUIDv7 provides time-based ordering).
+    
+    Query Parameters:
+    - cursor: Task ID to start after (optional)
+    - limit: Number of tasks to return (1-100, default 20)
+    - status: Filter by task status (optional)
+    - priority: Filter by task priority (optional)
+    - created_after: Filter tasks created after this datetime (optional)
+    - created_before: Filter tasks created before this datetime (optional)
+    - updated_after: Filter tasks updated after this datetime (optional)
+    - updated_before: Filter tasks updated before this datetime (optional)
     
     This is a protected route - requires valid JWT token.
     """
-    return task_service.get_all_tasks(current_user.id)
+    return task_service.get_list(
+        owner_id=current_user.id,
+        pagination_request=pagination
+    )
 
 
 @router.get(

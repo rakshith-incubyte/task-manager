@@ -81,10 +81,7 @@ def test_create_app_with_null_logger():
 def test_configure_cors_applies_settings():
     """
     Test that CORS configuration is applied from settings.
-    
-    This demonstrates Single Responsibility:
-    - configure_cors has one job: configure CORS
-    - Can be tested independently
+
     """
     custom_config = Settings(
         cors_origins=["https://example.com"],
@@ -101,10 +98,6 @@ def test_configure_cors_applies_settings():
 def test_create_app_uses_default_settings_when_none_provided():
     """
     Test that default settings are used when no config is provided.
-    
-    This demonstrates the Optional pattern:
-    - Convenient for production (no args needed)
-    - Flexible for testing (can inject custom config)
     """
     test_app = create_app()
     

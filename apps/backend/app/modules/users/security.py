@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.database import get_db
-from app.modules.users.jwt import jwt_bearer
+from app.modules.users.jwt import jwt_bearer, decodeJWT
 
 if TYPE_CHECKING:
     from app.modules.users.schemas import UserResponse
@@ -77,9 +77,9 @@ def create_refresh_token(subject: Union[str, Any], expires_delta: timedelta = No
         JWT refresh token string
     """
     if expires_delta is not None:
-        expires_delta = datetime.utcnow() + expires_delta
+        expires_delta = datetime.now(timezone.utc) + expires_delta
     else:
-        expires_delta = datetime.utcnow() + timedelta(minutes=settings.refresh_token_expires_in)
+        expires_delta = datetime.now(timezone.utc) + timedelta(minutes=settings.refresh_token_expires_in)
     
     to_encode = {"exp": expires_delta, "sub": str(subject)}
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, settings.algorithm)
@@ -103,7 +103,7 @@ def get_current_user(
     Raises:
         HTTPException: If user not found
     """
-    # Decode token
+    # Decode token using jwt_bearer's method
     payload = decodeJWT(token)
     if payload is None:
         raise HTTPException(
@@ -120,7 +120,7 @@ def get_current_user(
         )
     
     # Get user from database
-    user = service.get_user(user_id)
+    user = service.get_by_id(user_id)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

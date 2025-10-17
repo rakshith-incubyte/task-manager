@@ -11,6 +11,9 @@ from app.core.modules import ModuleLoader, register_modules, INSTALLED_MODULES
 from app.core.logger import NullLogger
 
 
+# UNIT TESTS
+# ==========
+
 def test_module_loader_initialization():
     """Test ModuleLoader can be initialized with custom logger."""
     custom_logger = NullLogger()
@@ -89,20 +92,6 @@ def test_module_loader_validate_module_wrong_type():
     assert result is False
 
 
-def test_module_loader_register_module_success():
-    """Test successful module registration."""
-    app = FastAPI()
-    loader = ModuleLoader(logger=NullLogger())
-    
-    result = loader.register_module(app, "app.modules.health")
-    assert result is True
-    
-    # Verify routes were added
-    routes = [route.path for route in app.routes]
-    assert "/" in routes
-    assert "/health" in routes
-
-
 def test_module_loader_register_module_import_error():
     """Test handling of ImportError during registration."""
     app = FastAPI()
@@ -135,6 +124,45 @@ def test_module_loader_register_module_generic_exception():
         
         result = loader.register_module(app, "test.module")
         assert result is False
+
+
+def test_installed_modules_constant():
+    """Test INSTALLED_MODULES is properly defined."""
+    assert isinstance(INSTALLED_MODULES, list)
+    assert "app.modules.health" in INSTALLED_MODULES
+
+
+def test_module_loader_register_module_include_router_error():
+    """Test handling of error when app.include_router fails."""
+    app = FastAPI()
+    loader = ModuleLoader(logger=NullLogger())
+    
+    with patch.object(loader, 'import_module') as mock_import:
+        mock_module = Mock()
+        mock_module.router = APIRouter()
+        mock_import.return_value = mock_module
+        
+        # Make include_router raise an exception
+        with patch.object(app, 'include_router', side_effect=ValueError("Router error")):
+            result = loader.register_module(app, "test.module")
+            assert result is False
+
+
+# INTEGRATION TESTS
+# =================
+
+def test_module_loader_register_module_success():
+    """Test successful module registration."""
+    app = FastAPI()
+    loader = ModuleLoader(logger=NullLogger())
+    
+    result = loader.register_module(app, "app.modules.health")
+    assert result is True
+    
+    # Verify routes were added
+    routes = [route.path for route in app.routes]
+    assert "/" in routes
+    assert "/health" in routes
 
 
 def test_module_loader_register_all():
@@ -171,25 +199,3 @@ def test_register_modules_with_custom_logger():
     
     routes = [route.path for route in app.routes]
     assert len(routes) > 0
-
-
-def test_installed_modules_constant():
-    """Test INSTALLED_MODULES is properly defined."""
-    assert isinstance(INSTALLED_MODULES, list)
-    assert "app.modules.health" in INSTALLED_MODULES
-
-
-def test_module_loader_register_module_include_router_error():
-    """Test handling of error when app.include_router fails."""
-    app = FastAPI()
-    loader = ModuleLoader(logger=NullLogger())
-    
-    with patch.object(loader, 'import_module') as mock_import:
-        mock_module = Mock()
-        mock_module.router = APIRouter()
-        mock_import.return_value = mock_module
-        
-        # Make include_router raise an exception
-        with patch.object(app, 'include_router', side_effect=ValueError("Router error")):
-            result = loader.register_module(app, "test.module")
-            assert result is False

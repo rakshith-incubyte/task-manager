@@ -25,7 +25,21 @@ def client(test_engine):
         finally:
             db.close()
     
+    # Mock authenticated user for tests
+    def mock_auth_user():
+        from app.modules.users.schemas import UserResponse
+        from datetime import datetime
+        return UserResponse(
+            id="test-user-id",
+            username="testuser",
+            email="test@example.com",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+    
     app.dependency_overrides[get_db] = override_get_db
+    from app.modules.users.security import get_current_user
+    app.dependency_overrides[get_current_user] = mock_auth_user
     
     yield TestClient(app)
     
@@ -36,7 +50,6 @@ class TestTaskEndpoints:
     def test_create_task_success(self, client):
         response = client.post(
             "/tasks/",
-            headers={"owner": "test_owner"},
             json={
                 "title": "Test Task",
                 "description": "This is a test task",
@@ -44,6 +57,10 @@ class TestTaskEndpoints:
                 "status": "todo"
             }
         )
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
+        if response.status_code == 422:
+            print(f"Validation errors: {response.json()}")
         assert response.status_code == 201
         data = response.json()
         assert data["title"] == "Test Task"
@@ -55,7 +72,6 @@ class TestTaskEndpoints:
     def test_create_task_invalid_data(self, client):
         response = client.post(
             "/tasks/",
-            headers={"owner": "test_owner"},
             json={
                 "title": "Test Task",
                 "description": "This is a test task",
@@ -68,7 +84,6 @@ class TestTaskEndpoints:
     def test_get_task_by_id_success(self, client):
         task1 = client.post(
             "/tasks/",
-            headers={"owner": "test_owner"},
             json={
                 "title": "Test Task",
                 "description": "This is a test task",
@@ -90,19 +105,21 @@ class TestTaskEndpoints:
         response = client.get("/tasks/invalid_id")
         assert response.status_code == 404
 
-    def test_get_all_tasks_success(self, client):
+    def test_get_tasks_pagination_success(self, client):
         response = client.get("/tasks/")
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
-        assert len(data) >= 0
+        assert isinstance(data, dict)
+        assert "data" in data
+        assert "next_cursor" in data
+        assert "has_more" in data
+        assert isinstance(data["data"], list)
     
     def test_update_task_success(self, client):
         """Test updating a task."""
         # First create a task
         create_response = client.post(
             "/tasks/",
-            headers={"owner": "test_owner"},
             json={
                 "title": "Test Task",
                 "description": "This is a test task",
@@ -116,7 +133,6 @@ class TestTaskEndpoints:
         # Now update the task
         response = client.put(
             f"/tasks/{task_id}",
-            headers={"owner": "test_owner"},
             json={
                 "title": "Updated Task",
                 "description": "This is an updated test task",
@@ -136,7 +152,6 @@ class TestTaskEndpoints:
         """Test updating a non-existent task."""
         response = client.put(
             "/tasks/invalid_id",
-            headers={"owner": "test_owner"},
             json={
                 "title": "Updated Task",
                 "status": "in_progress"
@@ -151,7 +166,6 @@ class TestTaskEndpoints:
         # First create a task
         create_response = client.post(
             "/tasks/",
-            headers={"owner": "test_owner"},
             json={
                 "title": "Test Task",
                 "description": "This is a test task",

@@ -99,97 +99,31 @@ def get_current_user_profile(
     return current_user
 
 
-@router.get(
-    "/{user_id}",
-    response_model=UserResponse,
-    summary="Get user by ID",
-    description="Retrieve a user by their unique identifier"
-)
-def get_user(
-    user_id: str,
-    service: UserServiceDep
-) -> UserResponse:
-    """
-    Get user by ID.
-    
-    Args:
-        user_id: User identifier (UUIDv7)
-    
-    Returns:
-        User data (without password)
-    
-    Raises:
-        404: User not found
-    """
-    return service.get_user(user_id)
-
-
-@router.get(
-    "/",
-    response_model=list[UserResponse],
-    summary="Get all users",
-    description="Retrieve a list of all registered users"
-)
-def get_all_users(
-    service: UserServiceDep
-) -> list[UserResponse]:
-    """
-    Get all users.
-    
-    Returns:
-        List of all users (without passwords)
-    """
-    return service.get_all_users()
-
 
 @router.put(
-    "/{user_id}",
+    "/me",
     response_model=UserResponse,
-    summary="Update user",
-    description="Update user information (username, email, or password)"
+    summary="Update current user",
+    description="Update current user information (username, email, or password)"
 )
-def update_user(
-    user_id: str,
+def update_current_user(
     user_data: UserUpdate,
+    current_user: AuthUser,
     service: UserServiceDep
 ) -> UserResponse:
     """
-    Update user.
+    Update current user profile.
     
     All fields are optional - only provided fields will be updated.
     Same validation rules apply as creation.
     
     Args:
-        user_id: User identifier
         user_data: Fields to update
     
     Returns:
         Updated user (without password)
     
     Raises:
-        404: User not found
         400: Validation failed (duplicate username/email)
     """
-    return service.update_user(user_id, user_data)
-
-
-@router.delete(
-    "/{user_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete user",
-    description="Permanently delete a user account"
-)
-def delete_user(
-    user_id: str,
-    service: UserServiceDep
-) -> None:
-    """
-    Delete user.
-    
-    Args:
-        user_id: User identifier
-    
-    Raises:
-        404: User not found
-    """
-    service.delete_user(user_id)
+    return service.update_current_user(user_data, current_user.id)

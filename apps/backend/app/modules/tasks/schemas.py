@@ -58,3 +58,84 @@ class TaskResponse(TaskBase):
             }
         }
     }
+
+
+class TaskFilter(BaseModel):
+    """Filter schema for task queries."""
+    status: Optional[TaskStatus] = Field(
+        default=None,
+        description="Filter by task status"
+    )
+    priority: Optional[TaskPriority] = Field(
+        default=None,
+        description="Filter by task priority"
+    )
+    created_after: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks created after this datetime"
+    )
+    created_before: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks created before this datetime"
+    )
+    updated_after: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks updated after this datetime"
+    )
+    updated_before: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks updated before this datetime"
+    )
+
+
+class TaskPaginationRequest(BaseModel):
+    """Request schema for task pagination."""
+    cursor: Optional[str] = Field(
+        default=None,
+        description="Cursor for pagination (task ID to start after)"
+    )
+    limit: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Number of tasks to return (1-100)"
+    )
+    
+    # Filter parameters
+    status: Optional[TaskStatus] = Field(
+        default=None,
+        description="Filter by task status"
+    )
+    priority: Optional[TaskPriority] = Field(
+        default=None,
+        description="Filter by task priority"
+    )
+    created_after: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks created after this datetime"
+    )
+    created_before: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks created before this datetime"
+    )
+    updated_after: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks updated after this datetime"
+    )
+    updated_before: Optional[datetime] = Field(
+        default=None,
+        description="Filter tasks updated before this datetime"
+    )
+
+
+class TaskPaginationResponse(BaseModel):
+    """Response schema for paginated tasks."""
+    data: list[TaskResponse] = Field(description="List of tasks")
+    next_cursor: Optional[str] = Field(
+        default=None,
+        description="Cursor for next page (None if no more pages)"
+    )
+    has_more: bool = Field(
+        default=False,
+        description="Whether there are more tasks available"
+    )

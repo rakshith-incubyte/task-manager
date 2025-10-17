@@ -1,22 +1,20 @@
-import uuid
+from typing import Optional
 from fastapi import HTTPException, status
 
 from app.modules.tasks.interfaces import TaskRepositoryProtocol
 from app.modules.tasks.schemas import TaskCreate
 from app.modules.tasks.schemas import TaskUpdate
 from app.modules.tasks.schemas import TaskResponse
+from app.modules.tasks.schemas import TaskPaginationResponse
+from app.modules.tasks.schemas import TaskPaginationRequest
 
 
 class TaskService:
     def __init__(self, repository: TaskRepositoryProtocol):
         self.repository = repository
 
-    def _generate_task_id(self) -> str:
-        return str(uuid.uuid7())
-    
     def create_task(self, task_data: TaskCreate, owner_id: str) -> TaskResponse:
-        task_id = self._generate_task_id()
-        return self.repository.create(task_id, task_data, owner_id)
+        return self.repository.create(task_data, owner_id)
     
     def get_task(self, task_id: str, owner_id: str) -> TaskResponse:
         """
@@ -38,35 +36,68 @@ class TaskService:
                 detail="Task ID is required"
             )
         
-        task = self.repository.get_by_id(task_id)
+        task = self.repository.get_by_id(task_id, owner_id)
         if not task:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found"
             )
         
-        # Check ownership
-        if task.owner_id != owner_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to access this task"
-            )
-        
         return task
     
-    def get_all_tasks(self, owner_id: str) -> list[TaskResponse]:
+    def get_list(
+        self, 
+        owner_id: str, 
+        pagination_request: TaskPaginationRequest
+    ) -> TaskPaginationResponse:
         """
-        Get all tasks for a specific owner.
+        Get paginated tasks for a specific owner using cursor-based pagination.
         
         Args:
             owner_id: Owner's user ID
-        
+            pagination_request: Pagination and filter parameters
+            
         Returns:
-            List of tasks owned by the user
+            Paginated task response
         """
-        all_tasks = self.repository.get_all()
-        # Filter tasks by owner
-        return [task for task in all_tasks if task.owner_id == owner_id]
+        if not owner_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Owner ID is required"
+            )
+        
+        # Extract filters from pagination request
+        filters = None
+        if (pagination_request.status is not None or 
+            pagination_request.priority is not None or
+            pagination_request.created_after is not None or
+            pagination_request.created_before is not None or
+            pagination_request.updated_after is not None or
+            pagination_request.updated_before is not None):
+            
+            from app.modules.tasks.schemas import TaskFilter
+            filters = TaskFilter(
+                status=pagination_request.status,
+                priority=pagination_request.priority,
+                created_after=pagination_request.created_after,
+                created_before=pagination_request.created_before,
+                updated_after=pagination_request.updated_after,
+                updated_before=pagination_request.updated_before
+            )
+        
+        # Get paginated tasks from repository
+        tasks, next_cursor, has_more = self.repository.get_list(
+            owner_id=owner_id,
+            cursor=pagination_request.cursor,
+            limit=pagination_request.limit,
+            filters=filters
+        )
+        
+        return TaskPaginationResponse(
+            data=tasks,
+            next_cursor=next_cursor,
+            has_more=has_more
+        )
     
     def update_task(self, task_id: str, task_data: TaskUpdate, owner_id: str) -> TaskResponse:
         """
@@ -89,18 +120,11 @@ class TaskService:
                 detail="Task ID is required"
             )
         
-        task = self.repository.get_by_id(task_id)
+        task = self.repository.get_by_id(task_id, owner_id)
         if not task:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found"
-            )
-        
-        # Check ownership
-        if task.owner_id != owner_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to update this task"
             )
         
         return self.repository.update(task_id, task_data, owner_id)
@@ -125,18 +149,11 @@ class TaskService:
                 detail="Task ID is required"
             )
         
-        task = self.repository.get_by_id(task_id)
+        task = self.repository.get_by_id(task_id, owner_id)
         if not task:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found"
             )
         
-        # Check ownership
-        if task.owner_id != owner_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to delete this task"
-            )
-        
-        return self.repository.delete(task_id)
+        return self.repository.delete(task_id, owner_id)

@@ -33,16 +33,8 @@ class UserRepositoryProtocol(Protocol):
         """Get user by email (returns User model for uniqueness check)."""
         ...
     
-    def get_all(self) -> list[UserResponse]:
-        """Get all users (without passwords)."""
-        ...
-    
     def update(self, user_id: str, user_data: UserUpdate, hashed_password: str | None) -> UserResponse | None:
         """Update a user."""
-        ...
-    
-    def delete(self, user_id: str) -> bool:
-        """Delete a user."""
         ...
 
 
@@ -63,17 +55,9 @@ class UserServiceProtocol(Protocol):
         """
         ...
     
-    def get_user(self, user_id: str) -> UserResponse | None:
-        """Get user by ID."""
-        ...
-    
-    def get_all_users(self) -> list[UserResponse]:
-        """Get all users."""
-        ...
-    
-    def update_user(self, user_id: str, user_data: UserUpdate) -> UserResponse | None:
+    def update_current_user(self, user_data: UserUpdate, current_user_id: str) -> UserResponse | None:
         """
-        Update user.
+        Update current user profile.
         
         Business logic:
         - Check username uniqueness (if changing)
@@ -81,7 +65,9 @@ class UserServiceProtocol(Protocol):
         - Hash password (if changing)
         """
         ...
-    
-    def delete_user(self, user_id: str) -> bool:
-        """Delete user."""
+
+    def get_by_id(self, user_id: str) -> UserResponse | None:
+        """
+        Get current user profile.
+        """
         ...

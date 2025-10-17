@@ -10,6 +10,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
 from sqlalchemy import String
+from sqlalchemy import Index
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
@@ -52,5 +53,18 @@ class Task(Base):
         default=datetime.now(timezone.utc),
         onupdate=datetime.now(timezone.utc),
         nullable=False
+    )
+    
+    # Database indexes for efficient pagination and filtering
+    __table_args__ = (
+        # Composite index for owner_id + id (cursor-based pagination)
+        Index('ix_tasks_owner_id_id', 'owner_id', 'id'),
+        # Index for owner filtering
+        Index('ix_tasks_owner_id', 'owner_id'),
+        # Indexes for filtering
+        Index('ix_tasks_owner_status', 'owner_id', 'status'),
+        Index('ix_tasks_owner_priority', 'owner_id', 'priority'),
+        Index('ix_tasks_owner_created_at', 'owner_id', 'created_at'),
+        Index('ix_tasks_owner_updated_at', 'owner_id', 'updated_at'),
     )
     

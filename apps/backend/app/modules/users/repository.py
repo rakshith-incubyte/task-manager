@@ -114,26 +114,6 @@ class UserRepository:
         """
         return self.db.query(User).filter(User.email == email).first()
     
-    def get_all(self) -> list[UserResponse]:
-        """
-        Get all users.
-        
-        Returns:
-            List of all users (without passwords)
-        """
-        users = self.db.query(User).all()
-        
-        return [
-            UserResponse(
-                id=user.id,
-                username=user.username,
-                email=user.email,
-                created_at=user.created_at,
-                updated_at=user.updated_at
-            )
-            for user in users
-        ]
-    
     def update(
         self,
         user_id: str,
@@ -176,23 +156,3 @@ class UserRepository:
             created_at=user.created_at,
             updated_at=user.updated_at
         )
-    
-    def delete(self, user_id: str) -> bool:
-        """
-        Delete user.
-        
-        Args:
-            user_id: User identifier
-        
-        Returns:
-            True if deleted, False if not found
-        """
-        user = self.db.query(User).filter(User.id == user_id).first()
-        
-        if not user:
-            return False
-        
-        self.db.delete(user)
-        self.db.commit()
-        
-        return True
