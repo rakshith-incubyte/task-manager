@@ -21,20 +21,12 @@ describe('Navigation Configuration', () => {
       })
     })
 
-    it('should include Dashboard navigation item', () => {
+    it('should include Home navigation item', () => {
       const items = getNavigationItems()
-      const dashboard = items.find((item) => item.label === 'Dashboard')
+      const home = items.find((item) => item.label === 'Home')
       
-      expect(dashboard).toBeDefined()
-      expect(dashboard?.href).toBe('/')
-    })
-
-    it('should include Tasks navigation item', () => {
-      const items = getNavigationItems()
-      const tasks = items.find((item) => item.label === 'Tasks')
-      
-      expect(tasks).toBeDefined()
-      expect(tasks?.href).toBe('/tasks')
+      expect(home).toBeDefined()
+      expect(home?.href).toBe('/app')
     })
 
     it('should include Settings navigation item', () => {
@@ -42,15 +34,14 @@ describe('Navigation Configuration', () => {
       const settings = items.find((item) => item.label === 'Settings')
       
       expect(settings).toBeDefined()
-      expect(settings?.href).toBe('/settings')
+      expect(settings?.href).toBe('/app/settings')
     })
 
     it('should return items in correct order', () => {
       const items = getNavigationItems()
       
-      expect(items[0].label).toBe('Dashboard')
-      expect(items[1].label).toBe('Tasks')
-      expect(items[2].label).toBe('Settings')
+      expect(items[0].label).toBe('Home')
+      expect(items[1].label).toBe('Settings')
     })
 
     it('should support optional icon property', () => {

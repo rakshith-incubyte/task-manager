@@ -6,16 +6,12 @@ export type NavigationItem = {
 
 const navigationItems: NavigationItem[] = [
   {
-    label: 'Dashboard',
-    href: '/',
-  },
-  {
-    label: 'Tasks',
-    href: '/tasks',
+    label: 'Home',
+    href: '/app',
   },
   {
     label: 'Settings',
-    href: '/settings',
+    href: '/app/settings',
   },
 ]
 

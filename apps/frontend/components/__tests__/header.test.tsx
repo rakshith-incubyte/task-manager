@@ -27,21 +27,18 @@ describe('Header Component', () => {
   it('should render all navigation links', () => {
     render(<Header />)
     
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /tasks/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()
   })
 
   it('should have correct href attributes for navigation links', () => {
     render(<Header />)
     
-    const dashboardLink = screen.getByRole('link', { name: /dashboard/i })
-    const tasksLink = screen.getByRole('link', { name: /tasks/i })
+    const homeLink = screen.getByRole('link', { name: /home/i })
     const settingsLink = screen.getByRole('link', { name: /settings/i })
     
-    expect(dashboardLink).toHaveAttribute('href', '/')
-    expect(tasksLink).toHaveAttribute('href', '/tasks')
-    expect(settingsLink).toHaveAttribute('href', '/settings')
+    expect(homeLink).toHaveAttribute('href', '/app')
+    expect(settingsLink).toHaveAttribute('href', '/app/settings')
   })
 
   it('should apply correct styling classes', () => {
