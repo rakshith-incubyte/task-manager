@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+from fastapi import UploadFile
 
 from pydantic import BaseModel, Field
 
@@ -7,9 +8,9 @@ from app.modules.tasks.models import TaskPriority, TaskStatus
 
 class TaskBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    description: str = Field(min_length=1, max_length=2048)
+    description: Optional[str] = Field(default=None, min_length=1, max_length=2048)
     status: TaskStatus = Field(default=TaskStatus.TODO)
-    priority: TaskPriority = Field(default=TaskPriority.LOW)
+    priority: TaskPriority = Field(default=TaskPriority.MEDIUM)
 
 class TaskCreate(TaskBase):
     ...
@@ -139,3 +140,61 @@ class TaskPaginationResponse(BaseModel):
         default=False,
         description="Whether there are more tasks available"
     )
+
+
+class TaskImportResponse(BaseModel):
+    """Response schema for CSV import."""
+    message: str = Field(description="Import status message")
+    status: str = Field(description="Import status (processing, completed, failed)")
+    filename: str = Field(description="Name of the imported file")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "message": "CSV import started",
+                "status": "processing",
+                "filename": "tasks.csv"
+            }
+        }
+    }
+
+
+class TaskFileUpload(BaseModel):
+    """Schema for file upload validation."""
+    file: UploadFile = Field(description="CSV file containing tasks to import")
+    
+    @staticmethod
+    def validate_csv_file(file: UploadFile) -> None:
+        """
+        Validate that uploaded file is a CSV.
+        
+        Args:
+            file: Uploaded file
+            
+        Raises:
+            ValueError: If file is not a CSV
+        """
+        if not file.filename.endswith('.csv'):
+            raise ValueError("File must be a CSV file")
+        
+        if file.content_type and file.content_type not in ['text/csv', 'application/csv']:
+            raise ValueError(f"Invalid content type: {file.content_type}. Expected text/csv")
+
+
+
+class TaskImportResult(BaseModel):
+    """Result schema for CSV import processing."""
+    success_count: int = Field(description="Number of successfully imported tasks")
+    error_count: int = Field(description="Number of failed imports")
+    total_processed: int = Field(description="Total number of rows processed")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "success_count": 45,
+                "error_count": 5,
+                "total_processed": 50
+            }
+        }
+    }
+

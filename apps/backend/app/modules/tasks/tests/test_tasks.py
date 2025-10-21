@@ -1,5 +1,5 @@
 """Tests for task API endpoints."""
-
+import io
 import pytest
 from datetime import datetime, timedelta
 from fastapi import HTTPException
@@ -482,3 +482,122 @@ class TestTaskService:
         
         assert exc_info.value.status_code == 400
         assert exc_info.value.detail == "Task ID is required"
+
+
+class TestCsvImportExport:
+    """Test CSV import/export functionality."""
+
+    def test_export_tasks_csv_success(self, client):
+        """Test successful CSV export of tasks."""
+        # Create some test tasks
+        tasks_data = [
+            {"title": "Task 1", "description": "Description 1", "priority": "high", "status": "todo"},
+            {"title": "Task 2", "description": "Description 2", "priority": "low", "status": "in_progress"},
+        ]
+        
+        for task_data in tasks_data:
+            client.post("/tasks/", json=task_data)
+        
+        # Export tasks to CSV
+        response = client.get("/tasks/export/csv")
+        
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/csv; charset=utf-8"
+        assert "attachment; filename=tasks.csv" in response.headers["content-disposition"]
+        
+        # Parse CSV content
+        csv_content = response.text
+        lines = csv_content.strip().split('\n')
+        
+        # Check header (handle both Unix and Windows line endings)
+        header_line = lines[0].replace('\r', '')
+        assert header_line == "id,title,description,status,priority,created_at,updated_at,owner_id"
+        
+        # Check we have 2 data rows + 1 header row
+        assert len(lines) == 3
+        
+        # Parse first data row
+        import csv
+        reader = csv.DictReader(io.StringIO(csv_content))
+        rows = list(reader)
+        
+        assert len(rows) == 2
+        assert rows[0]["title"] == "Task 1"
+        assert rows[0]["description"] == "Description 1"
+        assert rows[0]["status"] == "todo"
+        assert rows[0]["priority"] == "high"
+        assert "id" in rows[0]
+        assert "created_at" in rows[0]
+        assert "updated_at" in rows[0]
+
+    def test_export_tasks_csv_filtered(self, client):
+        """Test CSV export with filters."""
+        # Create tasks with different statuses
+        client.post("/tasks/", json={"title": "Todo Task", "description": "Todo", "priority": "high", "status": "todo"})
+        client.post("/tasks/", json={"title": "Done Task", "description": "Done", "priority": "high", "status": "done"})
+        
+        # Export only todo tasks
+        response = client.get("/tasks/export/csv?status=todo")
+        
+        assert response.status_code == 200
+        
+        # Parse CSV and check only todo task is exported
+        import csv
+        reader = csv.DictReader(io.StringIO(response.text))
+        rows = list(reader)
+        
+        assert len(rows) == 1
+        assert rows[0]["title"] == "Todo Task"
+        assert rows[0]["status"] == "todo"
+
+    def test_import_tasks_csv_success(self, client):
+        """Test successful CSV import."""
+        # Create CSV content
+        csv_content = """title,description,status,priority
+Task from CSV,Description from CSV,in_progress,high
+Another Task,,todo,medium"""
+        
+        # Create CSV file
+        csv_file = io.BytesIO(csv_content.encode('utf-8'))
+        csv_file.name = "test.csv"
+        
+        # Mock the file upload
+        files = {"file": ("test.csv", csv_file, "text/csv")}
+        
+        response = client.post("/tasks/import/csv", files=files)
+        
+        assert response.status_code == 202
+        data = response.json()
+        
+        # Verify response matches TaskImportResponse schema
+        assert "message" in data
+        assert "status" in data
+        assert "filename" in data
+        assert data["message"] == "CSV import started"
+        assert data["status"] == "processing"
+        assert data["filename"] == "test.csv"
+
+    def test_import_tasks_csv_invalid_file_type(self, client):
+        """Test CSV import with invalid file type."""
+        # Create non-CSV file content
+        file_content = b"This is not a CSV file"
+        
+        files = {"file": ("test.txt", io.BytesIO(file_content), "text/plain")}
+        
+        response = client.post("/tasks/import/csv", files=files)
+        
+        assert response.status_code == 400
+        # Verify error message from TaskFileUpload validation
+        assert "File must be a CSV file" in response.json()["detail"]
+
+    def test_export_tasks_csv_empty_result(self, client):
+        """Test CSV export when no tasks exist."""
+        response = client.get("/tasks/export/csv")
+        
+        assert response.status_code == 200
+        
+        # Should only have header row
+        lines = response.text.strip().split('\n')
+        assert len(lines) == 1  # Only header
+        header_line = lines[0].replace('\r', '')
+        assert header_line == "id,title,description,status,priority,created_at,updated_at,owner_id"

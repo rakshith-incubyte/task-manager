@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, status
+from fastapi import HTTPException
 from typing import Annotated
 from sqlalchemy.orm import Session
+from fastapi.responses import StreamingResponse
+from fastapi import UploadFile, File, BackgroundTasks
 
 from app.modules.users.security import AuthUser
 from app.core.database import get_db
@@ -12,6 +15,9 @@ from app.modules.tasks.schemas import TaskUpdate
 from app.modules.tasks.schemas import TaskResponse
 from app.modules.tasks.schemas import TaskPaginationRequest
 from app.modules.tasks.schemas import TaskPaginationResponse
+from app.modules.tasks.schemas import TaskImportResponse
+from app.modules.tasks.schemas import TaskFileUpload
+from app.modules.tasks.jobs import TaskBackgroundTasks
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -141,3 +147,99 @@ def delete_task(
     """
     task_service.delete_task(task_id, current_user.id)
     return None
+
+
+@router.get(
+    "/export/csv",
+    status_code=status.HTTP_200_OK,
+    summary="Export tasks to CSV",
+    description="Export filtered tasks to CSV format for download"
+)
+async def export_tasks_csv(
+    pagination: TaskPaginationRequest = Depends(),
+    task_service: TaskServiceDep = None,
+    current_user: AuthUser = None
+) -> StreamingResponse:
+    """
+    Export tasks to CSV format.
+    
+    Returns a streaming CSV response with task data.
+    Supports the same filtering options as the regular tasks endpoint.
+    
+    Query Parameters:
+    - cursor: Task ID to start after (optional)
+    - limit: Number of tasks to return (1-1000, default 100)
+    - status: Filter by task status (optional)
+    - priority: Filter by task priority (optional)
+    - created_after: Filter tasks created after this datetime (optional)
+    - created_before: Filter tasks created before this datetime (optional)
+    - updated_after: Filter tasks updated after this datetime (optional)
+    - updated_before: Filter tasks updated before this datetime (optional)
+    
+    This is a protected route - requires valid JWT token.
+    """
+    # Set high limit for export
+    pagination.limit = min(pagination.limit or 1000, 1000)
+    
+    def generate_csv() -> str:
+        # Get CSV content from service
+        csv_content = task_service.export_tasks_csv(current_user.id, pagination)
+        return csv_content
+    
+    # Return streaming response
+    return StreamingResponse(
+        iter([generate_csv()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=tasks.csv"}
+    )
+
+
+@router.post(
+    "/import/csv",
+    response_model=TaskImportResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Import tasks from CSV",
+    description="Import tasks from CSV file (processed in background)"
+)
+async def import_tasks_csv(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(..., description="CSV file containing tasks to import"),
+    task_service: TaskServiceDep = None,
+    current_user: AuthUser = None
+) -> TaskImportResponse:
+    """
+    Import tasks from CSV file.
+    
+    The CSV should have the following columns:
+    - title (required)
+    - description (optional)
+    - status (optional, defaults to 'todo')
+    - priority (optional, defaults to 'medium')
+    
+    Processing happens in background for large files.
+    Returns an import job ID for tracking progress.
+    
+    This is a protected route - requires valid JWT token.
+    """
+    # Guard clause: Validate file using schema
+    try:
+        TaskFileUpload.validate_csv_file(file)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    
+    # Start background processing (happy path)
+    background_tasks.add_task(
+        TaskBackgroundTasks.process_csv_import,
+        file.file.read(),
+        current_user.id,
+        task_service
+    )
+    
+    return TaskImportResponse(
+        message="CSV import started",
+        status="processing",
+        filename=file.filename
+    )

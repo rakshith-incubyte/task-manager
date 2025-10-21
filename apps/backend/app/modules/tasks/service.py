@@ -7,6 +7,10 @@ from app.modules.tasks.schemas import TaskUpdate
 from app.modules.tasks.schemas import TaskResponse
 from app.modules.tasks.schemas import TaskPaginationResponse
 from app.modules.tasks.schemas import TaskPaginationRequest
+from app.modules.tasks.schemas import TaskImportResult
+
+
+from app.modules.tasks.file_handler import TaskFileHandler
 
 
 class TaskService:
@@ -157,3 +161,79 @@ class TaskService:
             )
         
         return self.repository.delete(task_id, owner_id)
+
+    def export_tasks_csv(self, owner_id: str, pagination_request: TaskPaginationRequest) -> str:
+        """
+        Export tasks to CSV format.
+        
+        Args:
+            owner_id: ID of the user exporting tasks
+            pagination_request: Pagination and filtering parameters
+            
+        Returns:
+            CSV content as string
+        """
+        # Get tasks with filters
+        result = self.get_list(owner_id, pagination_request)
+        
+        # Use file handler to generate CSV
+        return TaskFileHandler.export_to_csv(result.data)
+
+    def import_tasks_csv(self, csv_content: bytes, owner_id: str) -> TaskImportResult:
+        """
+        Import tasks from CSV content.
+        
+        Args:
+            csv_content: Raw CSV file content as bytes
+            owner_id: ID of the user importing tasks
+            
+        Returns:
+            TaskImportResult with success/error counts
+        """
+        # Guard clause: Validate owner_id
+        if not owner_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Owner ID is required"
+            )
+        
+        success_count = 0
+        error_count = 0
+        
+        try:
+            # Parse CSV using file handler
+            for row in TaskFileHandler.parse_csv(csv_content):
+                try:
+                    # Validate row
+                    if not TaskFileHandler.validate_csv_row(row):
+                        error_count += 1
+                        continue
+                    
+                    # Convert row to TaskCreate
+                    task_data = TaskFileHandler.row_to_task_create(row)
+                    
+                    # Create task
+                    self.create_task(task_data, owner_id)
+                    success_count += 1
+                    
+                except Exception as e:
+                    # Log error but continue processing
+                    print(f"Error importing row: {row}, Error: {str(e)}")
+                    error_count += 1
+            
+            return TaskImportResult(
+                success_count=success_count,
+                error_count=error_count,
+                total_processed=success_count + error_count
+            )
+            
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to process CSV file: {str(e)}"
+            )
