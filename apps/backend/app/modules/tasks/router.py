@@ -128,6 +128,31 @@ def update_task(
     return task_service.update_task(task_id, task_data, current_user.id)
 
 
+@router.patch(
+    "/{task_id}",
+    response_model=TaskResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Partially update a task",
+    description="Partially update a task by ID (must be owned by the user)"
+)
+def patch_task(
+    task_id: str,
+    task_data: TaskUpdate,
+    task_service: TaskServiceDep,
+    current_user: AuthUser
+) -> TaskResponse:
+    """
+    Partially update a task for the authenticated user.
+    
+    Only the fields provided in the request body will be updated.
+    Other fields will remain unchanged.
+    
+    This is a protected route - requires valid JWT token.
+    User can only update their own tasks.
+    """
+    return task_service.update_task(task_id, task_data, current_user.id)
+
+
 @router.delete(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,

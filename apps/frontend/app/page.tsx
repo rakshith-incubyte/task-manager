@@ -34,7 +34,6 @@ export default async function Home(): Promise<React.ReactElement> {
           </div>
         </div>
       </header>
-
       <main className="container mx-auto px-4 py-16 space-y-16">
         <section className="text-center space-y-4">
           <h1 className="text-4xl font-bold tracking-tight">

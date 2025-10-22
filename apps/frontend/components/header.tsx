@@ -13,7 +13,7 @@ export const Header: React.FC = () => {
   return (
     <header className="border-b">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <Link href="/" className="text-sm font-semibold">
+        <Link href="/" className="text-xl font-bold">
           Task Manager
         </Link>
         <div className="flex items-center gap-4">

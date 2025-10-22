@@ -307,6 +307,132 @@ class TestTaskEndpoints:
         data = response.json()
         assert data["detail"] == "Task not found"
 
+    def test_patch_task_partial_update_status(self, client):
+        """Test partially updating only task status using PATCH."""
+        # Create a task
+        create_response = client.post(
+            "/tasks/",
+            json={
+                "title": "Test Task",
+                "description": "Original description",
+                "priority": "high",
+                "status": "todo"
+            }
+        )
+        assert create_response.status_code == 201
+        task_id = create_response.json()["id"]
+        original_task = create_response.json()
+        
+        # Patch only the status
+        response = client.patch(
+            f"/tasks/{task_id}",
+            json={"status": "in_progress"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify only status changed
+        assert data["status"] == "in_progress"
+        assert data["title"] == original_task["title"]
+        assert data["description"] == original_task["description"]
+        assert data["priority"] == original_task["priority"]
+
+    def test_patch_task_partial_update_priority(self, client):
+        """Test partially updating only task priority using PATCH."""
+        # Create a task
+        create_response = client.post(
+            "/tasks/",
+            json={
+                "title": "Test Task",
+                "description": "Test description",
+                "priority": "low",
+                "status": "todo"
+            }
+        )
+        assert create_response.status_code == 201
+        task_id = create_response.json()["id"]
+        
+        # Patch only the priority
+        response = client.patch(
+            f"/tasks/{task_id}",
+            json={"priority": "high"}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify only priority changed
+        assert data["priority"] == "high"
+        assert data["status"] == "todo"
+
+    def test_patch_task_multiple_fields(self, client):
+        """Test partially updating multiple fields using PATCH."""
+        # Create a task
+        create_response = client.post(
+            "/tasks/",
+            json={
+                "title": "Test Task",
+                "description": "Original description",
+                "priority": "low",
+                "status": "todo"
+            }
+        )
+        assert create_response.status_code == 201
+        task_id = create_response.json()["id"]
+        
+        # Patch status and priority
+        response = client.patch(
+            f"/tasks/{task_id}",
+            json={
+                "status": "done",
+                "priority": "high"
+            }
+        )
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify both fields changed
+        assert data["status"] == "done"
+        assert data["priority"] == "high"
+        assert data["title"] == "Test Task"
+        assert data["description"] == "Original description"
+
+    def test_patch_task_invalid_id(self, client):
+        """Test patching a non-existent task."""
+        response = client.patch(
+            "/tasks/invalid_id",
+            json={"status": "in_progress"}
+        )
+        assert response.status_code == 404
+        data = response.json()
+        assert data["detail"] == "Task not found"
+
+    def test_patch_task_empty_body(self, client):
+        """Test PATCH with empty body (no fields to update)."""
+        # Create a task
+        create_response = client.post(
+            "/tasks/",
+            json={
+                "title": "Test Task",
+                "description": "Test description",
+                "priority": "medium",
+                "status": "todo"
+            }
+        )
+        assert create_response.status_code == 201
+        task_id = create_response.json()["id"]
+        original_task = create_response.json()
+        
+        # Patch with empty body
+        response = client.patch(f"/tasks/{task_id}", json={})
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify nothing changed
+        assert data["title"] == original_task["title"]
+        assert data["description"] == original_task["description"]
+        assert data["priority"] == original_task["priority"]
+        assert data["status"] == original_task["status"]
+
     def test_delete_task_success(self, client):
         """Test deleting a task."""
         # First create a task

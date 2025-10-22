@@ -134,3 +134,35 @@ export const getTasks = async (
 
   return response.json()
 }
+
+export type UpdateTaskRequest = {
+  title?: string
+  description?: string | null
+  status?: TaskStatus
+  priority?: TaskPriority
+}
+
+/**
+ * Updates a task
+ */
+export const updateTask = async (
+  accessToken: string,
+  taskId: string,
+  data: UpdateTaskRequest
+): Promise<Task> => {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to update task' }))
+    throw new Error(error.detail || 'Failed to update task')
+  }
+
+  return response.json()
+}
