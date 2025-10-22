@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { useTaskActions } from '../use-task-actions'
+import { useTaskApi } from '@/hooks/use-task-api'
 import * as apiClient from '@/lib/api-client'
 
 vi.mock('@/lib/api-client')
 
-describe('useTaskActions', () => {
+describe('useTaskApi', () => {
   const mockAccessToken = 'mock-token'
   const mockOnSuccess = vi.fn()
   const mockOnError = vi.fn()
@@ -30,7 +30,7 @@ describe('useTaskActions', () => {
       vi.mocked(apiClient.createTask).mockResolvedValue(mockTask)
 
       const { result } = renderHook(() =>
-        useTaskActions(mockAccessToken, mockOnSuccess, mockOnError)
+        useTaskApi(mockAccessToken, mockOnSuccess, mockOnError)
       )
 
       await act(async () => {
@@ -48,7 +48,7 @@ describe('useTaskActions', () => {
         status: 'todo',
         priority: 'medium',
       })
-      expect(mockOnSuccess).toHaveBeenCalled()
+      expect(mockOnSuccess).toHaveBeenCalledWith(mockTask, 'create')
       expect(mockOnError).not.toHaveBeenCalled()
     })
 
@@ -57,16 +57,20 @@ describe('useTaskActions', () => {
       vi.mocked(apiClient.createTask).mockRejectedValue(error)
 
       const { result } = renderHook(() =>
-        useTaskActions(mockAccessToken, mockOnSuccess, mockOnError)
+        useTaskApi(mockAccessToken, mockOnSuccess, mockOnError)
       )
 
       await act(async () => {
-        await result.current.createTask({
-          title: 'New Task',
-          description: null,
-          status: 'todo',
-          priority: 'medium',
-        })
+        try {
+          await result.current.createTask({
+            title: 'New Task',
+            description: null,
+            status: 'todo',
+            priority: 'medium',
+          })
+        } catch (e) {
+          // Expected to throw
+        }
       })
 
       expect(mockOnError).toHaveBeenCalledWith(error)
@@ -90,7 +94,7 @@ describe('useTaskActions', () => {
       vi.mocked(apiClient.updateTask).mockResolvedValue(mockTask)
 
       const { result } = renderHook(() =>
-        useTaskActions(mockAccessToken, mockOnSuccess, mockOnError)
+        useTaskApi(mockAccessToken, mockOnSuccess, mockOnError)
       )
 
       await act(async () => {
@@ -108,7 +112,7 @@ describe('useTaskActions', () => {
         status: 'in_progress',
         priority: 'high',
       })
-      expect(mockOnSuccess).toHaveBeenCalled()
+      expect(mockOnSuccess).toHaveBeenCalledWith(mockTask, 'update')
       expect(mockOnError).not.toHaveBeenCalled()
     })
   })
@@ -118,7 +122,7 @@ describe('useTaskActions', () => {
       vi.mocked(apiClient.deleteTask).mockResolvedValue(undefined)
 
       const { result } = renderHook(() =>
-        useTaskActions(mockAccessToken, mockOnSuccess, mockOnError)
+        useTaskApi(mockAccessToken, mockOnSuccess, mockOnError)
       )
 
       await act(async () => {
@@ -126,7 +130,7 @@ describe('useTaskActions', () => {
       })
 
       expect(apiClient.deleteTask).toHaveBeenCalledWith(mockAccessToken, '123')
-      expect(mockOnSuccess).toHaveBeenCalled()
+      expect(mockOnSuccess).toHaveBeenCalledWith(undefined, 'delete', '123')
       expect(mockOnError).not.toHaveBeenCalled()
     })
 
@@ -135,11 +139,15 @@ describe('useTaskActions', () => {
       vi.mocked(apiClient.deleteTask).mockRejectedValue(error)
 
       const { result } = renderHook(() =>
-        useTaskActions(mockAccessToken, mockOnSuccess, mockOnError)
+        useTaskApi(mockAccessToken, mockOnSuccess, mockOnError)
       )
 
       await act(async () => {
-        await result.current.deleteTask('123')
+        try {
+          await result.current.deleteTask('123')
+        } catch (e) {
+          // Expected to throw
+        }
       })
 
       expect(mockOnError).toHaveBeenCalledWith(error)

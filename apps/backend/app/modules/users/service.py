@@ -190,6 +190,71 @@ class UserService:
             refresh_token=refresh_token
         )
     
+    def refresh_access_token(self, refresh_token: str) -> UserTokenResponse:
+        """
+        Generate new access token using refresh token.
+        
+        Business rules:
+        1. Refresh token must be valid
+        2. User must still exist
+        3. Generate new access and refresh tokens
+        
+        Args:
+            refresh_token: Valid refresh token
+        
+        Returns:
+            UserTokenResponse with new access_token and refresh_token
+        
+        Raises:
+            HTTPException: If refresh token is invalid or expired
+        """
+        try:
+            # Decode refresh token
+            payload = jwt.decode(
+                refresh_token,
+                settings.secret_key,
+                algorithms=[settings.algorithm]
+            )
+            user_id: str = payload.get("sub")
+            
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid refresh token"
+                )
+            
+            # Verify user still exists
+            user = self.repository.get_by_id(user_id)
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="User not found"
+                )
+            
+            # Generate new tokens
+            access_token_expires = timedelta(minutes=settings.access_token_expires_in)
+            refresh_token_expires = timedelta(minutes=settings.refresh_token_expires_in)
+            
+            new_access_token = create_access_token(user.id, access_token_expires)
+            new_refresh_token = create_refresh_token(user.id, refresh_token_expires)
+            
+            return UserTokenResponse(
+                user_id=user.id,
+                access_token=new_access_token,
+                refresh_token=new_refresh_token
+            )
+            
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token expired"
+            )
+        except jwt.InvalidTokenError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token"
+            )
+    
 
     def update_current_user(self, user_data: UserUpdate, current_user_id: str) -> UserResponse:
         """

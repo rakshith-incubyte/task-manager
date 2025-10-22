@@ -10,11 +10,11 @@ const getSecretKey = (): Uint8Array => {
 export type SessionPayload = {
   userId: string
   accessToken: string
-  refreshToken: string
   expiresAt?: string
 }
 
-const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000 // 7 days
+// Session duration matches access token expiry (shorter than refresh token)
+const SESSION_DURATION = 60 * 60 * 1000 // 1 hour (access token lifetime)
 
 /**
  * Encrypts session data using JWT
@@ -24,7 +24,7 @@ export const encrypt = async (payload: Record<string, unknown>): Promise<string>
   const jwt = new SignJWT(payload)
   jwt.setProtectedHeader({ alg: 'HS256' })
   jwt.setIssuedAt()
-  jwt.setExpirationTime('7d')
+  jwt.setExpirationTime('1h') // Match access token lifetime
   return await jwt.sign(key)
 }
 
@@ -46,17 +46,18 @@ export const decrypt = async (token: string): Promise<Record<string, unknown> | 
 }
 
 /**
- * Creates a new session with tokens
+ * Creates a new session with access token only
+ * Note: Refresh token is stored in httpOnly cookie by backend
  */
 export const createSession = async (data: {
   userId: string
   accessToken: string
-  refreshToken: string
 }): Promise<string> => {
   const expiresAt = new Date(Date.now() + SESSION_DURATION).toISOString()
   
   const sessionData: SessionPayload = {
-    ...data,
+    userId: data.userId,
+    accessToken: data.accessToken,
     expiresAt,
   }
   

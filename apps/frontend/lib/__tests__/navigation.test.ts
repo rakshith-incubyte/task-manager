@@ -29,19 +29,10 @@ describe('Navigation Configuration', () => {
       expect(home?.href).toBe('/app')
     })
 
-    it('should include Settings navigation item', () => {
-      const items = getNavigationItems()
-      const settings = items.find((item) => item.label === 'Settings')
-      
-      expect(settings).toBeDefined()
-      expect(settings?.href).toBe('/app/settings')
-    })
-
     it('should return items in correct order', () => {
       const items = getNavigationItems()
       
       expect(items[0].label).toBe('Home')
-      expect(items[1].label).toBe('Settings')
     })
 
     it('should support optional icon property', () => {

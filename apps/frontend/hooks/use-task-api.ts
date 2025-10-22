@@ -8,21 +8,21 @@ import {
   type Task,
 } from '@/lib/api-client'
 
-type UseTaskActionsReturn = {
+type UseTaskApiReturn = {
   createTask: (data: CreateTaskRequest) => Promise<Task>
   updateTask: (taskId: string, data: UpdateTaskRequest) => Promise<Task>
   deleteTask: (taskId: string) => Promise<void>
 }
 
 /**
- * Hook for managing task CRUD operations
- * Follows Single Responsibility Principle - handles only task actions
+ * Low-level hook for task API operations
+ * Wraps API calls with error handling - no state management or UI concerns
  */
-export const useTaskActions = (
+export const useTaskApi = (
   accessToken: string,
   onSuccess: (task?: Task, action?: 'create' | 'update' | 'delete', taskId?: string) => void,
   onError: (error: Error) => void
-): UseTaskActionsReturn => {
+): UseTaskApiReturn => {
   const createTask = useCallback(
     async (data: CreateTaskRequest): Promise<Task> => {
       try {

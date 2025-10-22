@@ -1,3 +1,5 @@
+import { axiosInstance } from './http-client'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export type LoginResponse = {
@@ -22,62 +24,50 @@ export type RegisterRequest = {
 
 /**
  * Authenticates user and returns JWT tokens
+ * Note: Login doesn't use interceptor as there's no token yet
  */
 export const loginUser = async (
   username: string,
   password: string
 ): Promise<LoginResponse> => {
-  const response = await fetch(`${API_BASE_URL}/users/auth/token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ username, password }),
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Login failed' }))
-    throw new Error(error.detail || 'Login failed')
+  try {
+    const response = await axiosInstance.post<LoginResponse>(
+      '/users/auth/token',
+      { username, password }
+    )
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Login failed')
   }
-
-  return response.json()
 }
 
 /**
  * Registers a new user
  */
 export const registerUser = async (data: RegisterRequest): Promise<UserResponse> => {
-  const response = await fetch(`${API_BASE_URL}/users/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Registration failed' }))
-    throw new Error(error.detail || 'Registration failed')
+  try {
+    const response = await axiosInstance.post<UserResponse>('/users/', data)
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Registration failed')
   }
-
-  return response.json()
 }
 
 /**
- * Gets current user profile using access token
+ * Gets current user profile
+ * Uses http-client with automatic token refresh
  */
 export const getCurrentUser = async (accessToken: string): Promise<UserResponse> => {
-  const response = await fetch(`${API_BASE_URL}/users/me`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to get user profile')
+  try {
+    // Set access token in http-client
+    const { httpClient } = await import('./http-client')
+    httpClient.setAccessToken(accessToken)
+    
+    const response = await axiosInstance.get<UserResponse>('/users/me')
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to get user profile')
   }
-
-  return response.json()
 }
 
 // Task types
@@ -103,6 +93,7 @@ export type TaskPaginationResponse = {
 
 /**
  * Gets paginated tasks for the authenticated user
+ * Uses http-client with automatic token refresh
  */
 export const getTasks = async (
   accessToken: string,
@@ -113,26 +104,22 @@ export const getTasks = async (
     priority?: TaskPriority
   }
 ): Promise<TaskPaginationResponse> => {
-  const queryParams = new URLSearchParams()
-  if (params?.cursor) queryParams.append('cursor', params.cursor)
-  if (params?.limit) queryParams.append('limit', params.limit.toString())
-  if (params?.status) queryParams.append('status', params.status)
-  if (params?.priority) queryParams.append('priority', params.priority)
-
-  const response = await fetch(
-    `${API_BASE_URL}/tasks/?${queryParams.toString()}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
+  try {
+    const { httpClient } = await import('./http-client')
+    httpClient.setAccessToken(accessToken)
+    
+    const response = await axiosInstance.get<TaskPaginationResponse>('/tasks/', {
+      params: {
+        cursor: params?.cursor,
+        limit: params?.limit,
+        status: params?.status,
+        priority: params?.priority,
       },
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch tasks')
+    })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to fetch tasks')
   }
-
-  return response.json()
 }
 
 export type CreateTaskRequest = {
@@ -151,69 +138,57 @@ export type UpdateTaskRequest = {
 
 /**
  * Creates a new task
+ * Uses http-client with automatic token refresh
  */
 export const createTask = async (
   accessToken: string,
   data: CreateTaskRequest
 ): Promise<Task> => {
-  const response = await fetch(`${API_BASE_URL}/tasks/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to create task' }))
-    throw new Error(error.detail || 'Failed to create task')
+  try {
+    const { httpClient } = await import('./http-client')
+    httpClient.setAccessToken(accessToken)
+    
+    const response = await axiosInstance.post<Task>('/tasks/', data)
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to create task')
   }
-
-  return response.json()
 }
 
 /**
  * Updates a task
+ * Uses http-client with automatic token refresh
  */
 export const updateTask = async (
   accessToken: string,
   taskId: string,
   data: UpdateTaskRequest
 ): Promise<Task> => {
-  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to update task' }))
-    throw new Error(error.detail || 'Failed to update task')
+  try {
+    const { httpClient } = await import('./http-client')
+    httpClient.setAccessToken(accessToken)
+    
+    const response = await axiosInstance.patch<Task>(`/tasks/${taskId}`, data)
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to update task')
   }
-
-  return response.json()
 }
 
 /**
  * Deletes a task
+ * Uses http-client with automatic token refresh
  */
 export const deleteTask = async (
   accessToken: string,
   taskId: string
 ): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Failed to delete task' }))
-    throw new Error(error.detail || 'Failed to delete task')
+  try {
+    const { httpClient } = await import('./http-client')
+    httpClient.setAccessToken(accessToken)
+    
+    await axiosInstance.delete(`/tasks/${taskId}`)
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to delete task')
   }
 }

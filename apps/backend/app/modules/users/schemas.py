@@ -158,3 +158,21 @@ class UserTokenResponse(BaseModel):
             }
         }
     }
+
+
+class RefreshTokenRequest(BaseModel):
+    """
+    Schema for refresh token request.
+    
+    Used to obtain a new access token using a valid refresh token.
+    """
+    
+    refresh_token: str = Field(description="Valid JWT refresh token")
+    
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+            }
+        }
+    }
