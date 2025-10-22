@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect } from 'vitest'
-import { createSessionCookie, clearSessionCookie, SESSION_COOKIE_NAME } from '../cookies'
+import { createSessionCookie, clearSessionCookie, SESSION_COOKIE_NAME } from '@/lib/cookies'
 
 describe('Cookie Utilities', () => {
   describe('createSessionCookie', () => {

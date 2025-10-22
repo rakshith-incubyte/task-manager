@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { loginUser, registerUser, getCurrentUser } from '../api-client'
+import { loginUser, registerUser, getCurrentUser } from '@/lib/api-client'
 
 // Mock fetch
 global.fetch = vi.fn()

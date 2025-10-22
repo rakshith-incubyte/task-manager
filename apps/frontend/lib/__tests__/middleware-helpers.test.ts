@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isProtectedRoute, isAuthRoute } from '../middleware-helpers'
+import { isProtectedRoute, isAuthRoute } from '@/lib/middleware-helpers'
 
 describe('Middleware Helpers', () => {
   describe('isProtectedRoute', () => {

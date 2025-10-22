@@ -1,10 +1,8 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { loginUser, registerUser } from '@/lib/api-client'
 import { createSession } from '@/lib/auth'
-import { createSessionCookie } from '@/lib/cookies'
 
 type LoginResult = {
   success: boolean
