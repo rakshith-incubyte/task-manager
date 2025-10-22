@@ -168,10 +168,23 @@ export const updateTask = async (
     const { httpClient } = await import('./http-client')
     httpClient.setAccessToken(accessToken)
     
+    console.log('Updating task:', { taskId, data, hasToken: !!accessToken })
     const response = await axiosInstance.patch<Task>(`/tasks/${taskId}`, data)
+    console.log('Task updated successfully:', response.data)
     return response.data
   } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to update task')
+    console.error('Update task error:', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code,
+      config: {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        method: error.config?.method
+      }
+    })
+    throw new Error(error.response?.data?.detail || error.message || 'Failed to update task')
   }
 }
 

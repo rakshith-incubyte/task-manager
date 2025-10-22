@@ -97,7 +97,12 @@ export const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({
       </div>
 
       {/* Draggable content area */}
-      <div className="p-3 sm:p-4 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
+      <div 
+        className="p-3 sm:p-4 cursor-grab active:cursor-grabbing" 
+        {...attributes} 
+        {...listeners}
+        suppressHydrationWarning
+      >
         <TaskCardContent
           task={task}
           statusColors={statusColors}

@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # CORS Configuration
-    cors_origins: List[str] = ["*"]
+    # Note: When allow_credentials=True, origins cannot be ["*"]
+    cors_origins: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
     cors_allow_credentials: bool = True
     cors_allow_methods: List[str] = ["*"]
     cors_allow_headers: List[str] = ["*"]

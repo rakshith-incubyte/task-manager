@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { verifySession } from '@/lib/auth'
 import { SESSION_COOKIE_NAME } from '@/lib/cookies'
-import { getTasks } from '@/lib/api-client'
+import { getTasksServer } from '@/lib/api-client-server'
 import { TaskList } from '@/components/tasks/task-list'
 
 export default async function DashboardPage(): Promise<React.ReactElement> {
@@ -20,8 +20,8 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     redirect('/login')
   }
 
-  // Fetch tasks
-  const tasksData = await getTasks(session.accessToken, { limit: 20 })
+  // Fetch tasks (server-side)
+  const tasksData = await getTasksServer(session.accessToken, { limit: 20 })
 
   return (
     <div className="space-y-6">

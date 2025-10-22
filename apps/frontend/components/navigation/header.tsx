@@ -9,7 +9,7 @@ import { NavItem } from './nav-item'
 import { getNavigationItems } from '@/lib/navigation'
 import { UserProfileDropdown } from './user-profile-dropdown'
 import { verifySession } from '@/lib/auth'
-import { getCurrentUser } from '@/lib/api-client'
+import { getCurrentUserServer } from '@/lib/api-client-server'
 
 export const Header: React.FC = async () => {
   const navigationItems = getNavigationItems()
@@ -19,11 +19,11 @@ export const Header: React.FC = async () => {
   const sessionCookie = cookieStore.get('session')
   const session = sessionCookie ? await verifySession(sessionCookie.value) : null
   
-  // Fetch user profile if session exists
+  // Fetch user profile if session exists (server-side)
   let userProfile = null
   if (session) {
     try {
-      userProfile = await getCurrentUser(session.accessToken)
+      userProfile = await getCurrentUserServer(session.accessToken)
     } catch (error) {
       console.error('Failed to fetch user profile:', error)
     }

@@ -19,6 +19,7 @@ class HttpClient {
   }> = []
 
   constructor() {
+    console.log('HttpClient initialized with baseURL:', API_BASE_URL)
     this.client = axios.create({
       baseURL: API_BASE_URL,
       headers: {
@@ -73,12 +74,14 @@ class HttpClient {
 
           try {
             // Call refresh endpoint (refresh token sent via httpOnly cookie)
+            console.log('Attempting token refresh...')
             const response = await axios.post(
               `${API_BASE_URL}/users/auth/refresh`,
               {},
               { withCredentials: true } // Send cookies
             )
 
+            console.log('Token refresh successful')
             const { access_token } = response.data
             // Backend sets new refresh token as httpOnly cookie
 
@@ -90,8 +93,13 @@ class HttpClient {
 
             // Retry original request
             return this.client(originalRequest)
-          } catch (refreshError) {
+          } catch (refreshError: any) {
             // Refresh failed - clear tokens and redirect to login
+            console.error('Token refresh failed:', {
+              status: refreshError.response?.status,
+              data: refreshError.response?.data,
+              message: refreshError.message
+            })
             this.processQueue(refreshError)
             this.clearTokens()
             
