@@ -2,7 +2,7 @@
 
 import { Task, TaskStatus, TaskPriority } from '@/lib/api-client'
 import { Badge } from '@/components/ui/badge'
-import { GripVertical } from 'lucide-react'
+import { Clock } from 'lucide-react'
 
 type TaskCardContentProps = {
   task: Task
@@ -23,36 +23,35 @@ export const TaskCardContent: React.FC<TaskCardContentProps> = ({
 }) => {
   return (
     <div className="space-y-3">
-      {/* Header with title and priority badge */}
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold break-words line-clamp-2 flex-1 min-w-0">
-          {task.title}
-        </h3>
-        <Badge 
-          variant="secondary"
-          className={`${priorityColors[task.priority]} text-white flex-shrink-0 text-xs`}
-        >
-          {task.priority}
-        </Badge>
-      </div>
+      {/* Title */}
+      <h3 className="text-sm font-semibold break-words line-clamp-2 leading-snug pr-16">
+        {task.title}
+      </h3>
 
       {/* Description */}
       {task.description && (
-        <p className="text-xs text-muted-foreground break-words line-clamp-2 leading-relaxed">
+        <p className="text-xs text-muted-foreground break-words line-clamp-3 leading-relaxed">
           {task.description}
         </p>
       )}
 
-      {/* Footer with status and dates */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t">
+      {/* Footer with badges and date */}
+      <div className="flex items-center gap-2 pt-2 border-t flex-wrap">
         <Badge 
           variant="outline"
           className={`${statusColors[task.status]} text-white border-0 text-xs`}
         >
           {statusLabels[task.status]}
         </Badge>
-        <div className="text-[10px] text-muted-foreground/70 text-right">
-          <div>{new Date(task.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+        <Badge 
+          variant="secondary"
+          className={`${priorityColors[task.priority]} text-white text-xs`}
+        >
+          {task.priority}
+        </Badge>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70 ml-auto">
+          <Clock className="h-3 w-3" />
+          <span>{new Date(task.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
         </div>
       </div>
     </div>

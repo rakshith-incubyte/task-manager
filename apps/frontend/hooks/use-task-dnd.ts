@@ -8,6 +8,7 @@ type UseTaskDndReturn = {
   tasks: Task[]
   tasksByStatus: TasksByStatus
   handleDragEnd: (event: DragEndEvent) => Promise<void>
+  setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void
 }
 
 export const useTaskDnd = (
@@ -70,5 +71,6 @@ export const useTaskDnd = (
     tasks,
     tasksByStatus,
     handleDragEnd,
+    setTasks,
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState, type ReactElement } from 'react'
 import { DndContext, DragOverlay, closestCorners, DragStartEvent } from '@dnd-kit/core'
-import { KanbanSquare, Table as TableIcon } from 'lucide-react'
+import { KanbanSquare, Table as TableIcon, Plus, Pencil, Trash2 } from 'lucide-react'
 import { Task, TaskPaginationResponse, TaskStatus, TaskPriority, updateTask } from '@/lib/api-client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,11 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { DroppableColumn } from '@/components/droppable-column'
 import { useTaskDnd } from '@/hooks/use-task-dnd'
 import { TaskCardContent } from '@/components/task-card-content'
+import { TaskModal } from '@/components/task-modal'
+import { DeleteTaskDialog } from '@/components/delete-task-dialog'
+import { useTaskActions } from '@/hooks/use-task-actions'
+import { type TaskFormData } from '@/lib/task-form-validation'
+import { motion } from 'motion/react'
 
 type TaskListProps = {
   initialTasks: TaskPaginationResponse
@@ -47,12 +52,66 @@ const viewModes: Array<{ id: ViewMode; label: string; icon: ReactElement }> = [
 export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus): Promise<void> => {
     await updateTask(accessToken, taskId, { status: newStatus })
   }
 
-  const { tasks, tasksByStatus, handleDragEnd } = useTaskDnd(initialTasks.data, handleStatusChange)
+  const { tasks, tasksByStatus, handleDragEnd, setTasks } = useTaskDnd(initialTasks.data, handleStatusChange)
+
+  const handleSuccess = (): void => {
+    // Refresh tasks by fetching from API
+    window.location.reload()
+  }
+
+  const handleError = (error: Error): void => {
+    console.error('Task operation failed:', error)
+    alert(error.message)
+  }
+
+  const { createTask, updateTask: updateTaskAction, deleteTask: deleteTaskAction } = useTaskActions(
+    accessToken,
+    handleSuccess,
+    handleError
+  )
+
+  const handleCreateTask = async (data: TaskFormData): Promise<void> => {
+    await createTask(data)
+  }
+
+  const handleUpdateTask = async (data: TaskFormData): Promise<void> => {
+    if (!selectedTask) return
+    await updateTaskAction(selectedTask.id, data)
+  }
+
+  const handleEditClick = (task: Task): void => {
+    setSelectedTask(task)
+    setIsEditModalOpen(true)
+  }
+
+  const handleDeleteClick = (task: Task): void => {
+    setSelectedTask(task)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleConfirmDelete = async (): Promise<void> => {
+    if (!selectedTask) return
+    setIsDeleting(true)
+    try {
+      await deleteTaskAction(selectedTask.id)
+      setIsDeleteDialogOpen(false)
+      setSelectedTask(null)
+    } catch (error) {
+      console.error('Delete failed:', error)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   const handleDragStart = (event: DragStartEvent): void => {
     const task = tasks.find((t) => t.id === event.active.id)
@@ -81,6 +140,8 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
             statusColors={statusColors}
             priorityColors={priorityColors}
             statusLabels={statusLabels}
+            onEditTask={handleEditClick}
+            onDeleteTask={handleDeleteClick}
           />
         ))}
       </div>
@@ -110,11 +171,18 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
             <th className="px-4 py-3 text-sm font-semibold">Priority</th>
             <th className="px-4 py-3 text-sm font-semibold">Created</th>
             <th className="px-4 py-3 text-sm font-semibold">Updated</th>
+            <th className="px-4 py-3 text-sm font-semibold">Actions</th>
           </tr>
         </thead>
         <tbody>
           {tasks.map((task) => (
-            <tr key={task.id} className="border-t">
+            <motion.tr
+              key={task.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="border-t hover:bg-accent/50 transition-colors"
+            >
               <td className="px-4 py-3 text-sm font-medium">{task.title}</td>
               <td className="px-4 py-3 text-sm">
                 <Badge className={statusColors[task.status]}>{statusLabels[task.status]}</Badge>
@@ -124,7 +192,29 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
               </td>
               <td className="px-4 py-3 text-sm">{new Date(task.created_at).toLocaleDateString()}</td>
               <td className="px-4 py-3 text-sm">{new Date(task.updated_at).toLocaleDateString()}</td>
-            </tr>
+              <td className="px-4 py-3 text-sm">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleEditClick(task)}
+                    className="h-8 w-8 p-0"
+                    aria-label="Edit task"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDeleteClick(task)}
+                    className="h-8 w-8 p-0 hover:text-destructive"
+                    aria-label="Delete task"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </td>
+            </motion.tr>
           ))}
         </tbody>
       </table>
@@ -133,7 +223,21 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-between">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="gap-2"
+            size="default"
+          >
+            <Plus className="h-4 w-4" />
+            Create Task
+          </Button>
+        </motion.div>
         <ButtonGroup aria-label="Task view mode">
           {viewModes.map((mode) => (
             <Button
@@ -153,9 +257,15 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
       {tasks.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No tasks yet. Create your first task to get started!
-            </p>
+            <div className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                No tasks yet. Create your first task to get started!
+              </p>
+              <Button onClick={() => setIsCreateModalOpen(true)} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Task
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : viewMode === 'grid' ? (
@@ -163,6 +273,35 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
       ) : (
         tableView
       )}
+
+      <TaskModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateTask}
+        mode="create"
+      />
+
+      <TaskModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setSelectedTask(null)
+        }}
+        onSubmit={handleUpdateTask}
+        initialTask={selectedTask || undefined}
+        mode="edit"
+      />
+
+      <DeleteTaskDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false)
+          setSelectedTask(null)
+        }}
+        onConfirm={handleConfirmDelete}
+        taskTitle={selectedTask?.title || ''}
+        isDeleting={isDeleting}
+      />
     </div>
   )
 }

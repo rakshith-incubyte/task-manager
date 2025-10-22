@@ -135,11 +135,42 @@ export const getTasks = async (
   return response.json()
 }
 
+export type CreateTaskRequest = {
+  title: string
+  description: string | null
+  status: TaskStatus
+  priority: TaskPriority
+}
+
 export type UpdateTaskRequest = {
   title?: string
   description?: string | null
   status?: TaskStatus
   priority?: TaskPriority
+}
+
+/**
+ * Creates a new task
+ */
+export const createTask = async (
+  accessToken: string,
+  data: CreateTaskRequest
+): Promise<Task> => {
+  const response = await fetch(`${API_BASE_URL}/tasks/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to create task' }))
+    throw new Error(error.detail || 'Failed to create task')
+  }
+
+  return response.json()
 }
 
 /**
@@ -165,4 +196,24 @@ export const updateTask = async (
   }
 
   return response.json()
+}
+
+/**
+ * Deletes a task
+ */
+export const deleteTask = async (
+  accessToken: string,
+  taskId: string
+): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Failed to delete task' }))
+    throw new Error(error.detail || 'Failed to delete task')
+  }
 }

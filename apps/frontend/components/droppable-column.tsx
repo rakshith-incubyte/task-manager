@@ -14,6 +14,8 @@ type DroppableColumnProps = {
   statusColors: Record<TaskStatus, string>
   priorityColors: Record<TaskPriority, string>
   statusLabels: Record<TaskStatus, string>
+  onEditTask?: (task: Task) => void
+  onDeleteTask?: (task: Task) => void
 }
 
 export const DroppableColumn: React.FC<DroppableColumnProps> = ({
@@ -23,6 +25,8 @@ export const DroppableColumn: React.FC<DroppableColumnProps> = ({
   statusColors,
   priorityColors,
   statusLabels,
+  onEditTask,
+  onDeleteTask,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
@@ -70,6 +74,8 @@ export const DroppableColumn: React.FC<DroppableColumnProps> = ({
               statusColors={statusColors}
               priorityColors={priorityColors}
               statusLabels={statusLabels}
+              onEdit={onEditTask}
+              onDelete={onDeleteTask}
             />
           ))}
         </AnimatePresence>
