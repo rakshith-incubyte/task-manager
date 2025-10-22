@@ -30,12 +30,12 @@ export const DroppableColumn: React.FC<DroppableColumnProps> = ({
 
   return (
     <Card
-      className={`transition-all duration-200 ${
-        isOver ? 'ring-2 ring-primary ring-offset-2 bg-accent/50' : ''
+      className={`transition-all duration-200 rounded-xl border-2 ${
+        isOver ? 'ring-2 ring-primary/50 ring-offset-2 bg-accent/30 border-primary/50' : 'border-border'
       }`}
     >
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle role="heading" aria-level={2}>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <CardTitle role="heading" aria-level={2} className="text-base font-semibold">
           {label}
         </CardTitle>
         <motion.div
@@ -43,21 +43,23 @@ export const DroppableColumn: React.FC<DroppableColumnProps> = ({
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
         >
-          <Badge variant="outline">{tasks.length}</Badge>
+          <Badge variant="secondary" className="text-xs font-medium">{tasks.length}</Badge>
         </motion.div>
       </CardHeader>
       <CardContent
         ref={setNodeRef}
-        className="space-y-3 min-h-[200px] transition-colors"
+        className="space-y-2 min-h-[300px] sm:min-h-[400px] transition-colors"
       >
         {tasks.length === 0 && (
-          <motion.p
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-sm text-muted-foreground text-center py-8"
+            className="flex items-center justify-center h-full min-h-[200px]"
           >
-            {isOver ? 'Drop here' : 'No tasks yet.'}
-          </motion.p>
+            <p className="text-xs text-muted-foreground/60 text-center">
+              {isOver ? '✨ Drop here' : 'No tasks yet'}
+            </p>
+          </motion.div>
         )}
 
         <AnimatePresence mode="popLayout">

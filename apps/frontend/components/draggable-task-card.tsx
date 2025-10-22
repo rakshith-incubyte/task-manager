@@ -40,17 +40,18 @@ export const DraggableTaskCard: React.FC<DraggableTaskCardProps> = ({
       exit={{ opacity: 0, scale: 0.9 }}
       whileHover={{ scale: isDragging ? 1 : 1.02 }}
       transition={{ duration: 0.2 }}
-      className={`space-y-3 rounded-lg border bg-background p-4 shadow-sm cursor-grab active:cursor-grabbing transition-all ${
+      className={`rounded-xl border bg-card p-3 sm:p-4 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all ${
         isDragging ? 'invisible' : ''
       }`}
       {...attributes}
+      {...listeners}
     >
       <TaskCardContent
         task={task}
         statusColors={statusColors}
         priorityColors={priorityColors}
         statusLabels={statusLabels}
-        gripListeners={listeners}
+        showGrip={false}
       />
     </motion.div>
   )

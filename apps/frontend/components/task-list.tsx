@@ -71,7 +71,7 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
       onDragEnd={handleDragEndWrapper}
       collisionDetection={closestCorners}
     >
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
         {statusOrder.map((status) => (
           <DroppableColumn
             key={status}
@@ -86,7 +86,7 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
       </div>
       <DragOverlay>
         {activeTask ? (
-          <div className="space-y-3 rounded-lg border bg-background p-4 shadow-2xl cursor-grabbing rotate-3 scale-105">
+          <div className="rounded-xl border-2 border-primary/20 bg-card p-3 sm:p-4 shadow-2xl cursor-grabbing rotate-2 scale-105">
             <TaskCardContent
               task={activeTask}
               statusColors={statusColors}
