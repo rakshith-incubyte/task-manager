@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { TaskList } from '../task-list'
+import { TaskList } from '../tasks/task-list'
 import type { Task, TaskPaginationResponse } from '@/lib/api-client'
 
 const buildTask = (overrides: Partial<Task>): Task => ({

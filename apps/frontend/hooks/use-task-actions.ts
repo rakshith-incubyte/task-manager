@@ -5,11 +5,12 @@ import {
   deleteTask as apiDeleteTask,
   type CreateTaskRequest,
   type UpdateTaskRequest,
+  type Task,
 } from '@/lib/api-client'
 
 type UseTaskActionsReturn = {
-  createTask: (data: CreateTaskRequest) => Promise<void>
-  updateTask: (taskId: string, data: UpdateTaskRequest) => Promise<void>
+  createTask: (data: CreateTaskRequest) => Promise<Task>
+  updateTask: (taskId: string, data: UpdateTaskRequest) => Promise<Task>
   deleteTask: (taskId: string) => Promise<void>
 }
 
@@ -19,28 +20,32 @@ type UseTaskActionsReturn = {
  */
 export const useTaskActions = (
   accessToken: string,
-  onSuccess: () => void,
+  onSuccess: (task?: Task, action?: 'create' | 'update' | 'delete', taskId?: string) => void,
   onError: (error: Error) => void
 ): UseTaskActionsReturn => {
   const createTask = useCallback(
-    async (data: CreateTaskRequest): Promise<void> => {
+    async (data: CreateTaskRequest): Promise<Task> => {
       try {
-        await apiCreateTask(accessToken, data)
-        onSuccess()
+        const task = await apiCreateTask(accessToken, data)
+        onSuccess(task, 'create')
+        return task
       } catch (error) {
         onError(error as Error)
+        throw error
       }
     },
     [accessToken, onSuccess, onError]
   )
 
   const updateTask = useCallback(
-    async (taskId: string, data: UpdateTaskRequest): Promise<void> => {
+    async (taskId: string, data: UpdateTaskRequest): Promise<Task> => {
       try {
-        await apiUpdateTask(accessToken, taskId, data)
-        onSuccess()
+        const task = await apiUpdateTask(accessToken, taskId, data)
+        onSuccess(task, 'update')
+        return task
       } catch (error) {
         onError(error as Error)
+        throw error
       }
     },
     [accessToken, onSuccess, onError]
@@ -50,9 +55,10 @@ export const useTaskActions = (
     async (taskId: string): Promise<void> => {
       try {
         await apiDeleteTask(accessToken, taskId)
-        onSuccess()
+        onSuccess(undefined, 'delete', taskId)
       } catch (error) {
         onError(error as Error)
+        throw error
       }
     },
     [accessToken, onSuccess, onError]

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { Header } from '@/components/header'
-import { ThemeProvider } from '@/components/theme-provider'
+import { Header } from '@/components/navigation/header'
+import { ThemeProvider } from '@/components/theme/theme-provider'
 
 const originalMatchMedia = window.matchMedia
 

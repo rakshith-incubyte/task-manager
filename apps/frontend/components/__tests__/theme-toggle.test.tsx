@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { ThemeProvider } from '@/components/theme-provider'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { ThemeProvider } from '@/components/theme/theme-provider'
+import { ThemeToggle } from '@/components/theme/theme-toggle'
 import { THEME_STORAGE_KEY } from '@/lib/theme-storage'
 
 describe('Theme Toggle', () => {

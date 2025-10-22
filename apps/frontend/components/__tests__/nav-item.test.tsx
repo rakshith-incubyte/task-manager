@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { NavItem } from '@/components/nav-item'
+import { NavItem } from '@/components/navigation/nav-item'
 import { NavigationMenu, NavigationMenuList } from '@/components/ui/navigation-menu'
 
 describe('NavItem Component', () => {

@@ -8,14 +8,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
-import { DroppableColumn } from '@/components/droppable-column'
+import { DroppableColumn } from '@/components/dnd/droppable-column'
 import { useTaskDnd } from '@/hooks/use-task-dnd'
-import { TaskCardContent } from '@/components/task-card-content'
-import { TaskModal } from '@/components/task-modal'
-import { DeleteTaskDialog } from '@/components/delete-task-dialog'
+import { TaskCardContent } from '@/components/tasks/task-card-content'
+import { TaskModal } from '@/components/tasks/task-modal'
+import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
 import { useTaskActions } from '@/hooks/use-task-actions'
 import { type TaskFormData } from '@/lib/task-form-validation'
 import { motion } from 'motion/react'
+import { useToast } from '@/hooks/use-toast'
+import { ToastContainer } from '@/components/ui/toast-container'
 
 type TaskListProps = {
   initialTasks: TaskPaginationResponse
@@ -57,6 +59,8 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  
+  const { toasts, showToast, removeToast } = useToast()
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus): Promise<void> => {
     await updateTask(accessToken, taskId, { status: newStatus })
@@ -64,14 +68,27 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
 
   const { tasks, tasksByStatus, handleDragEnd, setTasks } = useTaskDnd(initialTasks.data, handleStatusChange)
 
-  const handleSuccess = (): void => {
-    // Refresh tasks by fetching from API
-    window.location.reload()
+  const handleSuccess = (task?: Task, action?: 'create' | 'update' | 'delete', taskId?: string): void => {
+    if (action === 'create' && task) {
+      // Add new task to the list
+      setTasks((prevTasks) => [...prevTasks, task])
+      showToast('Task created successfully!', 'success')
+    } else if (action === 'update' && task) {
+      // Update existing task in the list
+      setTasks((prevTasks) =>
+        prevTasks.map((t) => (t.id === task.id ? task : t))
+      )
+      showToast('Task updated successfully!', 'success')
+    } else if (action === 'delete' && taskId) {
+      // Remove task from the list
+      setTasks((prevTasks) => prevTasks.filter((t) => t.id !== taskId))
+      showToast('Task deleted successfully!', 'success')
+    }
   }
 
   const handleError = (error: Error): void => {
     console.error('Task operation failed:', error)
-    alert(error.message)
+    showToast(error.message, 'error')
   }
 
   const { createTask, updateTask: updateTaskAction, deleteTask: deleteTaskAction } = useTaskActions(
@@ -302,6 +319,8 @@ export const TaskList: React.FC<TaskListProps> = ({ initialTasks, accessToken })
         taskTitle={selectedTask?.title || ''}
         isDeleting={isDeleting}
       />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   )
 }

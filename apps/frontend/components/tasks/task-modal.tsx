@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Task } from '@/lib/api-client'
-import { TaskForm } from '@/components/task-form'
+import { TaskForm } from '@/components/tasks/task-form'
 import { type TaskFormData } from '@/lib/task-form-validation'
 import {
   Dialog,

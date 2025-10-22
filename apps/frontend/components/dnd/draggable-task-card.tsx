@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { motion } from 'motion/react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Task, TaskStatus, TaskPriority } from '@/lib/api-client'
-import { TaskCardContent } from '@/components/task-card-content'
+import { TaskCardContent } from '@/components/tasks/task-card-content'
 import { Button } from '@/components/ui/button'
 
 type DraggableTaskCardProps = {

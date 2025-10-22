@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react'
 import { Task, TaskStatus, TaskPriority } from '@/lib/api-client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { DraggableTaskCard } from '@/components/draggable-task-card'
+import { DraggableTaskCard } from '@/components/dnd/draggable-task-card'
 
 type DroppableColumnProps = {
   status: TaskStatus
@@ -43,7 +43,8 @@ export const DroppableColumn: React.FC<DroppableColumnProps> = ({
           {label}
         </CardTitle>
         <motion.div
-          initial={{ scale: 0 }}
+          key={tasks.length}
+          initial={{ scale: 0.8 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
         >

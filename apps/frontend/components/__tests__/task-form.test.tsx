@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { TaskForm } from '@/components/task-form'
+import { TaskForm } from '@/components/tasks/task-form'
 import type { Task } from '@/lib/api-client'
 
 describe('TaskForm', () => {

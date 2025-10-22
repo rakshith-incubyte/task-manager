@@ -3,7 +3,7 @@ import {
   NavigationMenu,
   NavigationMenuList,
 } from '@/components/ui/navigation-menu'
-import { ThemeToggle } from '@/components/theme-toggle'
+import { ThemeToggle } from '@/components/theme/theme-toggle'
 import { NavItem } from './nav-item'
 import { getNavigationItems } from '@/lib/navigation'
 

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { verifySession } from '@/lib/auth'
 import { SESSION_COOKIE_NAME } from '@/lib/cookies'
 import { getTasks } from '@/lib/api-client'
-import { TaskList } from '@/components/task-list'
+import { TaskList } from '@/components/tasks/task-list'
 
 export default async function DashboardPage(): Promise<React.ReactElement> {
   // Get session
