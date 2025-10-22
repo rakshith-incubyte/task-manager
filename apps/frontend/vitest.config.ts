@@ -23,6 +23,11 @@ export default defineConfig({
         'next.config.ts',
         'tailwind.config.ts',
         'postcss.config.mjs',
+        'app/**/*layout.tsx',
+        'app/**/*page.tsx',
+        'components/header.tsx',
+        'components/task-list.tsx',
+        'components/ui/**/*.tsx',
       ],
       include: [
         'app/**/*.{ts,tsx}',

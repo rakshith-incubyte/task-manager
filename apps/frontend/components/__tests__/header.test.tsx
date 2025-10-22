@@ -1,38 +1,68 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Header } from '@/components/header'
+import { ThemeProvider } from '@/components/theme-provider'
+
+const originalMatchMedia = window.matchMedia
+
+const mockMatchMedia = (matches = false): MediaQueryList => ({
+  media: '(prefers-color-scheme: dark)',
+  matches,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => true,
+})
+
+beforeAll(() => {
+  window.matchMedia = () => mockMatchMedia(false)
+})
+
+afterAll(() => {
+  window.matchMedia = originalMatchMedia
+})
+
+const renderHeader = (): void => {
+  render(
+    <ThemeProvider>
+      <Header />
+    </ThemeProvider>
+  )
+}
 
 describe('Header Component', () => {
   it('should render the header element', () => {
-    render(<Header />)
+    renderHeader()
     
     const header = screen.getByRole('banner')
     expect(header).toBeInTheDocument()
   })
 
   it('should display the application title', () => {
-    render(<Header />)
+    renderHeader()
     
     const title = screen.getByText('Task Manager')
     expect(title).toBeInTheDocument()
   })
 
   it('should render navigation menu', () => {
-    render(<Header />)
+    renderHeader()
     
     const nav = screen.getByRole('navigation')
     expect(nav).toBeInTheDocument()
   })
 
   it('should render all navigation links', () => {
-    render(<Header />)
+    renderHeader()
     
     expect(screen.getByRole('link', { name: /home/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()
   })
 
   it('should have correct href attributes for navigation links', () => {
-    render(<Header />)
+    renderHeader()
     
     const homeLink = screen.getByRole('link', { name: /home/i })
     const settingsLink = screen.getByRole('link', { name: /settings/i })
@@ -42,14 +72,14 @@ describe('Header Component', () => {
   })
 
   it('should apply correct styling classes', () => {
-    render(<Header />)
+    renderHeader()
     
     const header = screen.getByRole('banner')
     expect(header).toHaveClass('border-b')
   })
 
   it('should have title link to home page', () => {
-    render(<Header />)
+    renderHeader()
     
     const titleLink = screen.getByText('Task Manager').closest('a')
     expect(titleLink).toHaveAttribute('href', '/')

@@ -3,6 +3,7 @@ import {
   NavigationMenu,
   NavigationMenuList,
 } from '@/components/ui/navigation-menu'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { NavItem } from './nav-item'
 import { getNavigationItems } from '@/lib/navigation'
 
@@ -15,13 +16,16 @@ export const Header: React.FC = () => {
         <Link href="/" className="text-sm font-semibold">
           Task Manager
         </Link>
-        <NavigationMenu>
-          <NavigationMenuList>
-            {navigationItems.map((item) => (
-              <NavItem key={item.href} item={item} />
-            ))}
-          </NavigationMenuList>
-        </NavigationMenu>
+        <div className="flex items-center gap-4">
+          <NavigationMenu>
+            <NavigationMenuList>
+              {navigationItems.map((item) => (
+                <NavItem key={item.href} item={item} />
+              ))}
+            </NavigationMenuList>
+          </NavigationMenu>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   )
