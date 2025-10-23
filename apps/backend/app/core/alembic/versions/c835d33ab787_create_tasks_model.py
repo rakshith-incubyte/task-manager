@@ -33,7 +33,6 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_table('test_model')
     op.alter_column('users', 'updated_at',
                existing_type=postgresql.TIMESTAMP(),
                nullable=False)
@@ -46,9 +45,5 @@ def downgrade() -> None:
     op.alter_column('users', 'updated_at',
                existing_type=postgresql.TIMESTAMP(),
                nullable=True)
-    op.create_table('test_model',
-    sa.Column('id', sa.INTEGER(), autoincrement=True, nullable=False),
-    sa.PrimaryKeyConstraint('id', name=op.f('test_model_pkey'))
-    )
     op.drop_table('tasks')
     # ### end Alembic commands ###
