@@ -1,0 +1,24 @@
+{
+    email CADDY_EMAIL
+}
+
+CADDY_DOMAIN {
+    handle /api/* {
+        reverse_proxy localhost:8000
+    }
+    handle {
+        reverse_proxy localhost:3000
+    }
+    encode gzip zstd
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        -Server
+    }
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
