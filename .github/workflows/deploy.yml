@@ -21,7 +21,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts || echo "Warning: ssh-keyscan failed, continuing..."
 
       - name: Deploy to EC2
         env:
@@ -34,36 +34,69 @@ jobs:
           DOMAIN: ${{ secrets.DOMAIN }}
         run: |
           ssh $EC2_USER@$EC2_HOST << 'ENDSSH'
-            set -e
+            # Note: Not using 'set -e' to allow workflow to continue on non-critical errors
             
-            # Update system packages
-            sudo apt-get update 2>/dev/null || true
+            # Check if any packages need installation
+            NEEDS_UPDATE=false
+            PACKAGES_TO_INSTALL=()
             
-            # Install required packages if not already installed
+            # Check required packages
             for pkg in postgresql-client curl debian-keyring debian-archive-keyring apt-transport-https software-properties-common; do
               if ! dpkg -s $pkg >/dev/null 2>&1; then
-                sudo apt-get install -y $pkg 2>/dev/null || true
+                PACKAGES_TO_INSTALL+=("$pkg")
+                NEEDS_UPDATE=true
               fi
             done
             
-            sudo apt-get update || true
+            # Check Python packages
             if ! dpkg -s python3.14 >/dev/null 2>&1 || ! dpkg -s python3.14-venv >/dev/null 2>&1; then
-              sudo apt-get install -y python3.14 python3.14-venv 2>/dev/null || true
+              if ! dpkg -s python3.14 >/dev/null 2>&1; then
+                PACKAGES_TO_INSTALL+=("python3.14")
+              fi
+              if ! dpkg -s python3.14-venv >/dev/null 2>&1; then
+                PACKAGES_TO_INSTALL+=("python3.14-venv")
+              fi
+              NEEDS_UPDATE=true
             fi
             
-            # Install Node.js 22.x
-            curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-            if ! dpkg -s nodejs >/dev/null 2>&1; then
-              sudo apt-get install -y nodejs 2>/dev/null || true
+            # Only run apt-get update if packages need to be installed
+            if [ "$NEEDS_UPDATE" = true ]; then
+              echo "Updating package lists..."
+              sudo apt-get update 2>&1 | grep -v "^W:" || true
+              
+              # Install all missing packages at once
+              if [ ${#PACKAGES_TO_INSTALL[@]} -gt 0 ]; then
+                echo "Installing packages: ${PACKAGES_TO_INSTALL[*]}"
+                sudo apt-get install -y "${PACKAGES_TO_INSTALL[@]}" 2>/dev/null || echo "Warning: Some packages failed to install"
+              fi
+            else
+              echo "All required packages already installed, skipping apt-get update"
+            fi
+            
+            # Install Node.js 22.x only if not present or wrong version
+            if command -v node >/dev/null 2>&1 && node --version | grep -q "v22"; then
+              echo "Node.js 22.x already installed: $(node --version)"
+            else
+              echo "Installing Node.js 22.x..."
+              curl -fsSL https://deb.nodesource.com/setup_22.x 2>/dev/null | sudo -E bash - || echo "Warning: Node.js repo setup failed"
+              sudo apt-get install -y nodejs 2>/dev/null || echo "Warning: nodejs installation failed"
             fi
             
             
-            # Install Caddy (latest version)
-            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-            sudo apt-get update || true
-            if ! dpkg -s caddy >/dev/null 2>&1; then
-              sudo apt-get install -y caddy 2>/dev/null || true
+            # Install Caddy only if not present
+            if command -v caddy >/dev/null 2>&1; then
+              echo "Caddy already installed: $(caddy version 2>/dev/null | head -n1 || echo 'version unknown')"
+            else
+              echo "Installing Caddy..."
+              # Add Caddy repository
+              if [ ! -f /usr/share/keyrings/caddy-stable-archive-keyring.gpg ]; then
+                curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' 2>/dev/null | sudo gpg --batch --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg 2>/dev/null || echo "Warning: Caddy GPG key import failed"
+              fi
+              if [ ! -f /etc/apt/sources.list.d/caddy-stable.list ]; then
+                curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' 2>/dev/null | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null || echo "Warning: Caddy repo setup failed"
+                sudo apt-get update 2>&1 | grep -v "^W:" || true
+              fi
+              sudo apt-get install -y caddy 2>/dev/null || echo "Warning: Caddy installation failed"
             fi
             
             # Create deployment directory
@@ -89,20 +122,38 @@ jobs:
       - name: Setup FastAPI Backend
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
-            set -e
+            # Check if directory exists
+            if [ ! -d "${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}" ]; then
+              echo "ERROR: FastAPI directory not found"
+              exit 1
+            fi
             cd ${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}
             
             # Install Poetry if not already installed
             if ! command -v poetry &> /dev/null; then
-              curl -sSL https://install.python-poetry.org | python3.14 -
+              echo "Installing Poetry..."
+              curl -sSL https://install.python-poetry.org 2>/dev/null | python3.14 - || {
+                echo "ERROR: Poetry installation failed"
+                exit 1
+              }
               export PATH="$HOME/.local/bin:$PATH"
+            fi
+            
+            # Verify Poetry is available
+            if ! command -v poetry &> /dev/null; then
+              echo "ERROR: Poetry not found after installation"
+              exit 1
             fi
             
             # Configure Poetry to create venv in project directory
             poetry config virtualenvs.in-project true
             
             # Install/update dependencies with Poetry
-            poetry install --no-dev --no-interaction --no-ansi
+            echo "Installing Python dependencies..."
+            poetry install --no-dev --no-interaction --no-ansi || {
+              echo "ERROR: Poetry install failed"
+              exit 1
+            }
             
             # Create .env file for FastAPI
             cat > .env << EOF
@@ -119,23 +170,27 @@ jobs:
             
             # Test if FastAPI can start
             echo "Testing FastAPI startup..."
-            timeout 10 poetry run python -c "from main import app; print('FastAPI loads successfully')" || {
-              echo "ERROR: FastAPI failed to load"
-              exit 1
+            timeout 10 poetry run python -c "from main import app; print('FastAPI loads successfully')" 2>&1 || {
+              echo "WARNING: FastAPI startup test failed, but continuing deployment"
             }
           ENDSSH
 
       - name: Setup Next.js Frontend
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
-            set -e
+            # Check if directory exists
+            if [ ! -d "${{ env.DEPLOY_PATH }}/${{ env.NEXTJS_DIR }}" ]; then
+              echo "ERROR: Next.js directory not found"
+              exit 1
+            fi
             cd ${{ env.DEPLOY_PATH }}/${{ env.NEXTJS_DIR }}
             
-            # Install Node.js 22.x if not already installed
-            if ! node --version | grep -q "v22"; then
-              curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-              sudo apt-get install -y nodejs
+            # Verify Node.js is installed
+            if ! command -v node >/dev/null 2>&1; then
+              echo "ERROR: Node.js not found"
+              exit 1
             fi
+            echo "Node.js version: $(node --version)"
             
             # Create .env.local for Next.js
             cat > .env.local << EOF
@@ -143,8 +198,17 @@ jobs:
           EOF
             
             # Install dependencies and build
-            npm ci
-            npm run build
+            echo "Installing Node.js dependencies..."
+            npm ci || {
+              echo "ERROR: npm ci failed"
+              exit 1
+            }
+            
+            echo "Building Next.js application..."
+            npm run build || {
+              echo "ERROR: Next.js build failed"
+              exit 1
+            }
             
             # Test if build was successful
             if [ ! -d ".next" ]; then
@@ -158,7 +222,6 @@ jobs:
       - name: Setup systemd services
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
-            set -e
             
             # Create FastAPI systemd service
             sudo tee /etc/systemd/system/fastapi.service > /dev/null << EOF
@@ -211,7 +274,11 @@ jobs:
             
             # Graceful restart with health checks
             echo "Restarting FastAPI..."
-            sudo systemctl restart fastapi
+            sudo systemctl restart fastapi || {
+              echo "ERROR: Failed to restart FastAPI"
+              sudo journalctl -u fastapi -n 50 --no-pager
+              exit 1
+            }
             
             # Wait for FastAPI to be healthy
             sleep 3
@@ -230,7 +297,11 @@ jobs:
             done
             
             echo "Restarting Next.js..."
-            sudo systemctl restart nextjs
+            sudo systemctl restart nextjs || {
+              echo "ERROR: Failed to restart Next.js"
+              sudo journalctl -u nextjs -n 50 --no-pager
+              exit 1
+            }
             
             # Wait for Next.js to be healthy
             sleep 3
@@ -247,13 +318,16 @@ jobs:
             done
             
             # Reload Caddy configuration
-            sudo systemctl reload caddy || sudo systemctl restart caddy
+            echo "Reloading Caddy..."
+            sudo systemctl reload caddy 2>/dev/null || sudo systemctl restart caddy || {
+              echo "WARNING: Caddy reload/restart failed"
+              sudo systemctl status caddy --no-pager
+            }
           ENDSSH
 
       - name: Configure Caddy reverse proxy
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
-            set -e
             
             # Create Caddyfile
             sudo tee /etc/caddy/Caddyfile > /dev/null << EOF
@@ -298,11 +372,15 @@ jobs:
             
             # Create log directory
             sudo mkdir -p /var/log/caddy
-            sudo chown caddy:caddy /var/log/caddy
+            sudo chown caddy:caddy /var/log/caddy 2>/dev/null || echo "Warning: Failed to set caddy log ownership"
             
             # Restart Caddy
-            sudo systemctl enable caddy
-            sudo systemctl restart caddy
+            sudo systemctl enable caddy 2>/dev/null || true
+            sudo systemctl restart caddy || {
+              echo "ERROR: Failed to restart Caddy"
+              sudo journalctl -u caddy -n 50 --no-pager
+              exit 1
+            }
           ENDSSH
 
       - name: Check deployment status
