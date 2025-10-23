@@ -150,7 +150,9 @@ jobs:
             
             # Install/update dependencies with Poetry
             echo "Installing Python dependencies..."
-            poetry install --no-dev --no-interaction --no-ansi || {
+            # Use --only main for Poetry 1.2+, fallback to --no-dev for older versions
+            poetry install --only main --no-interaction --no-ansi 2>/dev/null || \
+            poetry install --no-interaction --no-ansi || {
               echo "ERROR: Poetry install failed"
               exit 1
             }
