@@ -1,0 +1,307 @@
+name: Deploy to EC2
+
+on:
+  workflow_dispatch:
+
+env:
+  FASTAPI_DIR: apps/backend
+  NEXTJS_DIR: apps/frontend
+  DEPLOY_PATH: /var/www/myapp
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DOMAIN: ${{ secrets.DOMAIN }}
+        run: |
+          ssh $EC2_USER@$EC2_HOST << 'ENDSSH'
+            set -e
+            
+            # Update system packages
+            sudo apt-get update
+            
+            # Install required packages
+            sudo apt-get install -y python3-pip python3-venv nodejs npm postgresql-client curl debian-keyring debian-archive-keyring apt-transport-https
+            
+            # Install Caddy (latest version)
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+            sudo apt-get update
+            sudo apt-get install -y caddy
+            
+            # Create deployment directory
+            sudo mkdir -p ${{ env.DEPLOY_PATH }}
+            sudo chown -R $USER:$USER ${{ env.DEPLOY_PATH }}
+            
+            echo "Deployment directory ready"
+          ENDSSH
+
+      - name: Copy application files
+        run: |
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.next' \
+            --exclude '__pycache__' \
+            --exclude '*.pyc' \
+            --exclude 'venv' \
+            --exclude '.venv' \
+            --exclude '.git' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH }}/
+
+      - name: Setup FastAPI Backend
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}
+            
+            # Install Poetry if not already installed
+            if ! command -v poetry &> /dev/null; then
+              curl -sSL https://install.python-poetry.org | python3 -
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+            
+            # Configure Poetry to create venv in project directory
+            poetry config virtualenvs.in-project true
+            
+            # Install/update dependencies with Poetry
+            poetry install --no-dev --no-interaction --no-ansi
+            
+            # Create .env file for FastAPI
+            cat > .env << EOF
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}/${{ secrets.DB_NAME }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          EOF
+            
+            # Run database migrations if you're using Alembic
+            # poetry run alembic upgrade head
+            
+            # Test if FastAPI can start
+            echo "Testing FastAPI startup..."
+            timeout 10 poetry run python -c "from main import app; print('FastAPI loads successfully')" || {
+              echo "ERROR: FastAPI failed to load"
+              exit 1
+            }
+          ENDSSH
+
+      - name: Setup Next.js Frontend
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            set -e
+            cd ${{ env.DEPLOY_PATH }}/${{ env.NEXTJS_DIR }}
+            
+            # Install Node.js 20.x if not already installed
+            if ! node --version | grep -q "v20"; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+            
+            # Create .env.local for Next.js
+            cat > .env.local << EOF
+          NEXT_PUBLIC_API_URL=https://${{ secrets.DOMAIN }}/api
+          EOF
+            
+            # Install dependencies and build
+            npm ci
+            npm run build
+            
+            # Test if build was successful
+            if [ ! -d ".next" ]; then
+              echo "ERROR: Next.js build failed"
+              exit 1
+            fi
+            
+            echo "Next.js build successful"
+          ENDSSH
+
+      - name: Setup systemd services
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            set -e
+            
+            # Create FastAPI systemd service
+            sudo tee /etc/systemd/system/fastapi.service > /dev/null << EOF
+          [Unit]
+          Description=FastAPI Application
+          After=network.target
+
+          [Service]
+          Type=notify
+          User=$USER
+          WorkingDirectory=${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}
+          Environment="PATH=${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}/.venv/bin:/home/$USER/.local/bin"
+          ExecStart=${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8000
+          ExecReload=/bin/kill -s HUP \$MAINPID
+          KillMode=mixed
+          KillSignal=SIGQUIT
+          TimeoutStopSec=5
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+            # Create Next.js systemd service
+            sudo tee /etc/systemd/system/nextjs.service > /dev/null << EOF
+          [Unit]
+          Description=Next.js Application
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=$USER
+          WorkingDirectory=${{ env.DEPLOY_PATH }}/${{ env.NEXTJS_DIR }}
+          Environment="NODE_ENV=production"
+          Environment="PORT=3000"
+          ExecStart=/usr/bin/npm start
+          Restart=always
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+            # Reload systemd
+            sudo systemctl daemon-reload
+            
+            # Enable services (only needed on first deploy)
+            sudo systemctl enable fastapi nextjs 2>/dev/null || true
+            
+            # Graceful restart with health checks
+            echo "Restarting FastAPI..."
+            sudo systemctl restart fastapi
+            
+            # Wait for FastAPI to be healthy
+            sleep 3
+            for i in {1..10}; do
+              if curl -f http://localhost:8000/docs >/dev/null 2>&1 || \
+                 curl -f http://localhost:8000/health >/dev/null 2>&1 || \
+                 curl -f http://localhost:8000/ >/dev/null 2>&1; then
+                echo "FastAPI is healthy"
+                break
+              fi
+              if [ $i -eq 10 ]; then
+                echo "WARNING: FastAPI health check failed"
+                sudo systemctl status fastapi --no-pager
+              fi
+              sleep 2
+            done
+            
+            echo "Restarting Next.js..."
+            sudo systemctl restart nextjs
+            
+            # Wait for Next.js to be healthy
+            sleep 3
+            for i in {1..10}; do
+              if curl -f http://localhost:3000/ >/dev/null 2>&1; then
+                echo "Next.js is healthy"
+                break
+              fi
+              if [ $i -eq 10 ]; then
+                echo "WARNING: Next.js health check failed"
+                sudo systemctl status nextjs --no-pager
+              fi
+              sleep 2
+            done
+            
+            # Reload Caddy configuration
+            sudo systemctl reload caddy || sudo systemctl restart caddy
+          ENDSSH
+
+      - name: Configure Caddy reverse proxy
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            set -e
+            
+            # Create Caddyfile
+            sudo tee /etc/caddy/Caddyfile > /dev/null << EOF
+          ${{ secrets.DOMAIN }} {
+              # API routes to FastAPI
+              handle /api/* {
+                  reverse_proxy localhost:8000
+              }
+              
+              # Everything else to Next.js
+              handle {
+                  reverse_proxy localhost:3000
+              }
+              
+              # Enable compression
+              encode gzip zstd
+              
+              # Security headers
+              header {
+                  # Enable HSTS
+                  Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+                  # Prevent MIME sniffing
+                  X-Content-Type-Options "nosniff"
+                  # Clickjacking protection
+                  X-Frame-Options "SAMEORIGIN"
+                  # XSS protection
+                  X-XSS-Protection "1; mode=block"
+                  # Remove server header
+                  -Server
+              }
+              
+              # Logging
+              log {
+                  output file /var/log/caddy/access.log
+                  format json
+              }
+          }
+          EOF
+            
+            # Create log directory
+            sudo mkdir -p /var/log/caddy
+            sudo chown caddy:caddy /var/log/caddy
+            
+            # Restart Caddy
+            sudo systemctl enable caddy
+            sudo systemctl restart caddy
+          ENDSSH
+
+      - name: Check deployment status
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            echo "=== FastAPI Status ==="
+            sudo systemctl status fastapi --no-pager || true
+            
+            echo "=== Next.js Status ==="
+            sudo systemctl status nextjs --no-pager || true
+            
+            echo "=== Caddy Status ==="
+            sudo systemctl status caddy --no-pager || true
+            
+            echo "=== Application URLs ==="
+            echo "Frontend: https://${{ secrets.DOMAIN }}"
+            echo "API: https://${{ secrets.DOMAIN }}/api"
+          ENDSSH
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_ed25519
