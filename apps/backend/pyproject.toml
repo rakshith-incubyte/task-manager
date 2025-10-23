@@ -6,7 +6,7 @@ authors = [
     {name = "Rakshith Vikramraj",email = "rakshith@incubyte.co"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "fastapi[all] (>=0.115.0,<0.120.0)",
     "pydantic (>=2.0.0,<3.0.0)",
