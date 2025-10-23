@@ -37,6 +37,16 @@ SECRET_KEY=$SECRET_KEY
 DEBUG=false
 EOF
 
+# Run database migrations with Alembic
+echo "Running database migrations..."
+if [ -f "alembic.ini" ]; then
+  poetry run alembic upgrade head || {
+    echo "WARNING: Alembic migrations failed, but continuing deployment"
+  }
+else
+  echo "No alembic.ini found, skipping migrations"
+fi
+
 # Test if FastAPI can start
 echo "Testing FastAPI startup..."
 timeout 10 poetry run python -c "from app.main import app; print('FastAPI loads successfully')" 2>&1 || {

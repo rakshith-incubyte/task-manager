@@ -23,12 +23,6 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts || echo "Warning: ssh-keyscan failed, continuing..."
 
-      - name: Setup packages and dependencies
-        env:
-          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
-        run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "export DEPLOY_PATH=$DEPLOY_PATH && bash $DEPLOY_PATH/.github/scripts/setup-packages.sh"
-
       - name: Copy application files
         run: |
           rsync -avz --delete \
@@ -41,6 +35,12 @@ jobs:
             --exclude '.git' \
             -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
             ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH }}/
+
+      - name: Setup packages and dependencies
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "export DEPLOY_PATH=$DEPLOY_PATH && bash $DEPLOY_PATH/.github/scripts/setup-packages.sh"
 
       - name: Setup FastAPI Backend
         env:
