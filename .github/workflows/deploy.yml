@@ -62,14 +62,6 @@ jobs:
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "export DEPLOY_PATH=$DEPLOY_PATH NEXTJS_DIR=$NEXTJS_DIR DOMAIN=$DOMAIN && bash $DEPLOY_PATH/.github/scripts/setup-nextjs.sh"
 
-      - name: Setup systemd services
-        env:
-          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
-          FASTAPI_DIR: ${{ env.FASTAPI_DIR }}
-          NEXTJS_DIR: ${{ env.NEXTJS_DIR }}
-        run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "export DEPLOY_PATH=$DEPLOY_PATH FASTAPI_DIR=$FASTAPI_DIR NEXTJS_DIR=$NEXTJS_DIR USER=\$USER && bash $DEPLOY_PATH/.github/scripts/setup-systemd.sh"
-
       - name: Configure Caddy reverse proxy
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
@@ -77,6 +69,14 @@ jobs:
           DOMAIN: ${{ secrets.DOMAIN }}
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "export DEPLOY_PATH=$DEPLOY_PATH EMAIL=$EMAIL DOMAIN=$DOMAIN && bash $DEPLOY_PATH/.github/scripts/setup-caddy.sh"
+
+      - name: Setup systemd services
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          FASTAPI_DIR: ${{ env.FASTAPI_DIR }}
+          NEXTJS_DIR: ${{ env.NEXTJS_DIR }}
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "export DEPLOY_PATH=$DEPLOY_PATH FASTAPI_DIR=$FASTAPI_DIR NEXTJS_DIR=$NEXTJS_DIR USER=\$USER && bash $DEPLOY_PATH/.github/scripts/setup-systemd.sh"
 
       - name: Check deployment status
         env:

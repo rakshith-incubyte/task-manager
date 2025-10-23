@@ -101,10 +101,3 @@ for i in {1..10}; do
   fi
   sleep 2
 done
-
-# Reload Caddy configuration
-echo "Reloading Caddy..."
-sudo systemctl reload caddy 2>/dev/null || sudo systemctl restart caddy || {
-  echo "WARNING: Caddy reload/restart failed"
-  sudo systemctl status caddy --no-pager
-}
