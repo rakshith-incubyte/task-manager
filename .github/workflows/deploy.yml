@@ -346,45 +346,41 @@ jobs:
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
             
             # Create Caddyfile
-            sudo tee /etc/caddy/Caddyfile > /dev/null << EOF
-                {
-                email ${{ secrets.EMAIL }}
-                }
-                ${{ secrets.DOMAIN }} {
-              # API routes to FastAPI
-              handle /api/* {
-                  reverse_proxy localhost:8000
-              }
-              
-              # Everything else to Next.js
-              handle {
-                  reverse_proxy localhost:3000
-              }
-              
-              # Enable compression
-              encode gzip zstd
-              
-              # Security headers
-              header {
-                  # Enable HSTS
-                  Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-                  # Prevent MIME sniffing
-                  X-Content-Type-Options "nosniff"
-                  # Clickjacking protection
-                  X-Frame-Options "SAMEORIGIN"
-                  # XSS protection
-                  X-XSS-Protection "1; mode=block"
-                  # Remove server header
-                  -Server
-              }
-              
-              # Logging
-              log {
-                  output file /var/log/caddy/access.log
-                  format json
-              }
-            }
-            EOF
+            sudo tee /etc/caddy/Caddyfile > /dev/null << 'CADDYEOF'
+{
+  email ${{ secrets.EMAIL }}
+}
+
+${{ secrets.DOMAIN }} {
+  # API routes to FastAPI
+  handle /api/* {
+    reverse_proxy localhost:8000
+  }
+  
+  # Everything else to Next.js
+  handle {
+    reverse_proxy localhost:3000
+  }
+  
+  # Enable compression
+  encode gzip zstd
+  
+  # Security headers
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    X-XSS-Protection "1; mode=block"
+    -Server
+  }
+  
+  # Logging
+  log {
+    output file /var/log/caddy/access.log
+    format json
+  }
+}
+CADDYEOF
             
             # Create log directory
             sudo mkdir -p /var/log/caddy
@@ -411,9 +407,40 @@ jobs:
             echo "=== Caddy Status ==="
             sudo systemctl status caddy --no-pager || true
             
+            echo ""
+            echo "=== Network Diagnostics ==="
+            echo "Checking if services are listening on correct ports..."
+            sudo netstat -tlnp | grep -E ':(80|443|3000|8000)' || echo "No services found on expected ports"
+            
+            echo ""
+            echo "=== Firewall Status ==="
+            sudo ufw status verbose 2>/dev/null || echo "UFW not active or not installed"
+            
+            echo ""
+            echo "=== Local Service Tests ==="
+            echo "Testing FastAPI (localhost:8000):"
+            curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:8000/ 2>&1 || echo "FastAPI not responding"
+            
+            echo "Testing Next.js (localhost:3000):"
+            curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:3000/ 2>&1 || echo "Next.js not responding"
+            
+            echo "Testing Caddy (localhost:80):"
+            curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost/ 2>&1 || echo "Caddy not responding on port 80"
+            
+            echo ""
+            echo "=== Caddy Configuration Test ==="
+            sudo caddy validate --config /etc/caddy/Caddyfile 2>&1 || echo "Caddyfile validation failed"
+            
+            echo ""
+            echo "=== Recent Caddy Logs ==="
+            sudo journalctl -u caddy -n 20 --no-pager || true
+            
+            echo ""
             echo "=== Application URLs ==="
             echo "Frontend: https://${{ secrets.DOMAIN }}"
             echo "API: https://${{ secrets.DOMAIN }}/api"
+            echo ""
+            echo "IMPORTANT: Ensure EC2 Security Group allows inbound traffic on ports 80 and 443"
           ENDSSH
 
       - name: Cleanup
