@@ -37,12 +37,24 @@ jobs:
             set -e
             
             # Update system packages
-            sudo apt-get update
+            sudo apt-get update || true
+            
+            # Install required packages
+            sudo apt-get install -y postgresql-client curl debian-keyring debian-archive-keyring apt-transport-https software-properties-common
+            
+            sudo apt-get update || true
+            sudo apt-get install -y python3.14 python3.14-venv
+            
+            # Install Node.js 22.x
+            curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+            
             
             # Install Caddy (latest version)
             curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
             curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-            sudo apt-get update
+            sudo apt-get update || true
+            sudo apt-get install -y caddy
             
             # Create deployment directory
             sudo mkdir -p ${{ env.DEPLOY_PATH }}
@@ -109,6 +121,11 @@ jobs:
             set -e
             cd ${{ env.DEPLOY_PATH }}/${{ env.NEXTJS_DIR }}
             
+            # Install Node.js 22.x if not already installed
+            if ! node --version | grep -q "v22"; then
+              curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
             
             # Create .env.local for Next.js
             cat > .env.local << EOF
