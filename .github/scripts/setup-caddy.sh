@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Create log directory FIRST (before creating Caddyfile)
+echo "Setting up Caddy log directory..."
+sudo mkdir -p /var/log/caddy
+sudo chown -R caddy:caddy /var/log/caddy
+sudo chmod 755 /var/log/caddy
+
 # Create Caddyfile from template
 echo "Creating Caddyfile from template..."
 sed -e "s/CADDY_EMAIL/$EMAIL/g" \
@@ -16,10 +22,6 @@ sudo caddy validate --config /etc/caddy/Caddyfile || {
   sudo cat /etc/caddy/Caddyfile
   exit 1
 }
-
-# Create log directory
-sudo mkdir -p /var/log/caddy
-sudo chown caddy:caddy /var/log/caddy 2>/dev/null || echo "Warning: Failed to set caddy log ownership"
 
 # Restart Caddy
 sudo systemctl enable caddy 2>/dev/null || true
