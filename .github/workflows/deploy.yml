@@ -159,12 +159,9 @@ jobs:
             
             # Create .env file for FastAPI
             cat > .env << EOF
-          DB_HOST=${{ secrets.DB_HOST }}
-          DB_NAME=${{ secrets.DB_NAME }}
-          DB_USER=${{ secrets.DB_USER }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@${{ secrets.DB_HOST }}/${{ secrets.DB_NAME }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DEBUG=false
           EOF
             
             # Run database migrations if you're using Alembic
@@ -197,7 +194,7 @@ jobs:
             # Install pnpm if not already installed
             if ! command -v pnpm >/dev/null 2>&1; then
               echo "Installing pnpm..."
-              npm install -g pnpm || {
+              sudo npm install -g pnpm || {
                 echo "ERROR: pnpm installation failed"
                 exit 1
               }
