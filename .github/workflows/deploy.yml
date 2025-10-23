@@ -172,7 +172,7 @@ jobs:
             
             # Test if FastAPI can start
             echo "Testing FastAPI startup..."
-            timeout 10 poetry run python -c "from main import app; print('FastAPI loads successfully')" 2>&1 || {
+            timeout 10 poetry run python -c "from app.main import app; print('FastAPI loads successfully')" 2>&1 || {
               echo "WARNING: FastAPI startup test failed, but continuing deployment"
             }
           ENDSSH
@@ -194,6 +194,16 @@ jobs:
             fi
             echo "Node.js version: $(node --version)"
             
+            # Install pnpm if not already installed
+            if ! command -v pnpm >/dev/null 2>&1; then
+              echo "Installing pnpm..."
+              npm install -g pnpm || {
+                echo "ERROR: pnpm installation failed"
+                exit 1
+              }
+            fi
+            echo "pnpm version: $(pnpm --version)"
+            
             # Create .env.local for Next.js
             cat > .env.local << EOF
           NEXT_PUBLIC_API_URL=https://${{ secrets.DOMAIN }}/api
@@ -201,13 +211,13 @@ jobs:
             
             # Install dependencies and build
             echo "Installing Node.js dependencies..."
-            npm ci || {
-              echo "ERROR: npm ci failed"
+            pnpm install --frozen-lockfile || {
+              echo "ERROR: pnpm install failed"
               exit 1
             }
             
             echo "Building Next.js application..."
-            npm run build || {
+            pnpm run build || {
               echo "ERROR: Next.js build failed"
               exit 1
             }
@@ -236,7 +246,7 @@ jobs:
           User=$USER
           WorkingDirectory=${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}
           Environment="PATH=${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}/.venv/bin:/home/$USER/.local/bin"
-          ExecStart=${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8000
+          ExecStart=${{ env.DEPLOY_PATH }}/${{ env.FASTAPI_DIR }}/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 127.0.0.1:8000
           ExecReload=/bin/kill -s HUP \$MAINPID
           KillMode=mixed
           KillSignal=SIGQUIT
@@ -260,7 +270,7 @@ jobs:
           WorkingDirectory=${{ env.DEPLOY_PATH }}/${{ env.NEXTJS_DIR }}
           Environment="NODE_ENV=production"
           Environment="PORT=3000"
-          ExecStart=/usr/bin/npm start
+          ExecStart=/usr/bin/pnpm start
           Restart=always
           RestartSec=5
 
