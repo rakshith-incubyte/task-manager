@@ -727,3 +727,104 @@ Another Task,,todo,medium"""
         assert len(lines) == 1  # Only header
         header_line = lines[0].replace('\r', '')
         assert header_line == "id,title,description,status,priority,created_at,updated_at,owner_id"
+    
+    def test_get_tasks_filter_by_created_after(self, client):
+        """Test filtering tasks by created_after date."""
+        # Create tasks at different times (simulated by creating them sequentially)
+        now = datetime.now()
+        past = now - timedelta(days=2)
+        
+        # Create a task
+        client.post("/tasks/", json={"title": "Old Task", "description": "Old", "priority": "high", "status": "todo"})
+        
+        # Filter by created_after (should exclude old task if we use future date)
+        future = now + timedelta(days=1)
+        response = client.get(f"/tasks/?created_after={future.isoformat()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) == 0
+        
+        # Filter by created_after (should include task if we use past date)
+        response = client.get(f"/tasks/?created_after={past.isoformat()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) >= 1
+    
+    def test_get_tasks_filter_by_created_before(self, client):
+        """Test filtering tasks by created_before date."""
+        now = datetime.now()
+        future = now + timedelta(days=1)
+        
+        # Create a task
+        client.post("/tasks/", json={"title": "Recent Task", "description": "Recent", "priority": "high", "status": "todo"})
+        
+        # Filter by created_before (should include task if we use future date)
+        response = client.get(f"/tasks/?created_before={future.isoformat()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) >= 1
+    
+    def test_get_tasks_filter_by_date_range(self, client):
+        """Test filtering tasks by date range (created_after and created_before)."""
+        now = datetime.now()
+        past = now - timedelta(days=2)
+        future = now + timedelta(days=1)
+        
+        # Create tasks
+        client.post("/tasks/", json={"title": "Task 1", "description": "Task 1", "priority": "high", "status": "todo"})
+        client.post("/tasks/", json={"title": "Task 2", "description": "Task 2", "priority": "medium", "status": "todo"})
+        
+        # Filter by date range that includes all tasks
+        response = client.get(f"/tasks/?created_after={past.isoformat()}&created_before={future.isoformat()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) >= 2
+    
+    def test_get_tasks_filter_by_updated_after(self, client):
+        """Test filtering tasks by updated_after date."""
+        now = datetime.now()
+        past = now - timedelta(days=1)
+        
+        # Create and update a task
+        create_response = client.post("/tasks/", json={"title": "Task", "description": "Task", "priority": "high", "status": "todo"})
+        task_id = create_response.json()["id"]
+        
+        # Update the task
+        client.patch(f"/tasks/{task_id}", json={"status": "in_progress"})
+        
+        # Filter by updated_after (should include updated task)
+        response = client.get(f"/tasks/?updated_after={past.isoformat()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) >= 1
+    
+    def test_get_tasks_filter_by_updated_before(self, client):
+        """Test filtering tasks by updated_before date."""
+        now = datetime.now()
+        future = now + timedelta(days=1)
+        
+        # Create a task
+        client.post("/tasks/", json={"title": "Task", "description": "Task", "priority": "high", "status": "todo"})
+        
+        # Filter by updated_before (should include task)
+        response = client.get(f"/tasks/?updated_before={future.isoformat()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) >= 1
+    
+    def test_get_tasks_combined_filters_with_dates(self, client):
+        """Test combining status, priority, and date filters."""
+        now = datetime.now()
+        past = now - timedelta(days=1)
+        future = now + timedelta(days=1)
+        
+        # Create tasks
+        client.post("/tasks/", json={"title": "High Todo", "description": "High todo", "priority": "high", "status": "todo"})
+        client.post("/tasks/", json={"title": "Low Done", "description": "Low done", "priority": "low", "status": "done"})
+        
+        # Filter by priority, status, and date range
+        response = client.get(f"/tasks/?priority=high&status=todo&created_after={past.isoformat()}&created_before={future.isoformat()}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data"]) >= 1
+        assert all(task["priority"] == "high" and task["status"] == "todo" for task in data["data"])

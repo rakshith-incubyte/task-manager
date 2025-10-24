@@ -82,4 +82,22 @@ describe('TaskList', () => {
     expect(screen.getByRole('cell', { name: /draft spec/i })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: /implement feature/i })).toBeInTheDocument()
   })
+
+  it('renders filter panel', () => {
+    render(<TaskList initialTasks={buildTaskResponse()} accessToken={accessToken} />)
+
+    expect(screen.getByText(/filters/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/status/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/priority/i)).toBeInTheDocument()
+  })
+
+  it('displays clear filters button when filters are active', async () => {
+    const tasks = [buildTask({ id: '1', status: 'todo', title: 'Task 1' })]
+    render(<TaskList initialTasks={buildTaskResponse({ tasks })} accessToken={accessToken} />)
+
+    const statusSelect = screen.getByLabelText(/status/i)
+    await user.selectOptions(statusSelect, 'todo')
+
+    expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument()
+  })
 })

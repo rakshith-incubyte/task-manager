@@ -91,18 +91,27 @@ export type TaskPaginationResponse = {
   has_more: boolean
 }
 
+export type TaskFilterParams = {
+  status?: TaskStatus
+  priority?: TaskPriority
+  created_after?: string
+  created_before?: string
+  updated_after?: string
+  updated_before?: string
+}
+
+export type TaskQueryParams = TaskFilterParams & {
+  cursor?: string
+  limit?: number
+}
+
 /**
  * Gets paginated tasks for the authenticated user
  * Uses http-client with automatic token refresh
  */
 export const getTasks = async (
   accessToken: string,
-  params?: {
-    cursor?: string
-    limit?: number
-    status?: TaskStatus
-    priority?: TaskPriority
-  }
+  params?: TaskQueryParams
 ): Promise<TaskPaginationResponse> => {
   try {
     const { httpClient } = await import('./http-client')
@@ -114,11 +123,47 @@ export const getTasks = async (
         limit: params?.limit,
         status: params?.status,
         priority: params?.priority,
+        created_after: params?.created_after,
+        created_before: params?.created_before,
+        updated_after: params?.updated_after,
+        updated_before: params?.updated_before,
       },
     })
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to fetch tasks')
+  }
+}
+
+/**
+ * Gets ALL tasks for the authenticated user (for export)
+ * Fetches all pages recursively
+ */
+export const getAllTasks = async (accessToken: string): Promise<Task[]> => {
+  const allTasks: Task[] = []
+  let cursor: string | null = null
+  let hasMore = true
+
+  try {
+    const { httpClient } = await import('./http-client')
+    httpClient.setAccessToken(accessToken)
+
+    while (hasMore) {
+      const response: { data: TaskPaginationResponse } = await axiosInstance.get<TaskPaginationResponse>('/tasks/', {
+        params: {
+          cursor: cursor || undefined,
+          limit: 100, // Fetch 100 at a time
+        },
+      })
+
+      allTasks.push(...response.data.data)
+      cursor = response.data.next_cursor
+      hasMore = response.data.has_more
+    }
+
+    return allTasks
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to fetch all tasks')
   }
 }
 
