@@ -1,4 +1,4 @@
-# Task Manager
+# Task Manager 1
 
 ## Project Overview
 A task management application with separate frontend and backend components.
