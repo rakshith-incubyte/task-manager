@@ -21,6 +21,10 @@ RUN pnpm install --frozen-lockfile
 # Copy application source
 COPY . .
 
+# Accept build arguments for environment variables
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 

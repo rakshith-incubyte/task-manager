@@ -259,6 +259,8 @@ jobs:
           tags: taskmanager-frontend:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=/api
 
       - name: Test docker-compose configuration
         run: |
