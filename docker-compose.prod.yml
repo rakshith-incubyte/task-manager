@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   backend:
     image: ${REGISTRY}/${IMAGE_NAME_BACKEND}:${IMAGE_TAG:-latest}

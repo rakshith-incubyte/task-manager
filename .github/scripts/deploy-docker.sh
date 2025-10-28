@@ -23,8 +23,25 @@ if ! command -v docker &> /dev/null; then
     sudo usermod -aG docker $USER
     rm get-docker.sh
     echo "✓ Docker installed successfully"
+    echo "⚠️  You may need to log out and back in for Docker group to take effect"
 else
     echo "✓ Docker is already installed"
+fi
+
+# Check if user has Docker permissions
+if ! docker ps &> /dev/null; then
+    echo "⚠️  Current user doesn't have Docker permissions"
+    echo "Adding user to docker group..."
+    sudo usermod -aG docker $USER
+    echo "✓ User added to docker group"
+    echo ""
+    echo "Using sudo for Docker commands in this session..."
+    # Use sudo for Docker commands if needed
+    DOCKER_CMD="sudo docker"
+    DOCKER_COMPOSE_CMD="sudo docker compose"
+else
+    DOCKER_CMD="docker"
+    DOCKER_COMPOSE_CMD="docker compose"
 fi
 
 # Check if Docker Compose is available
@@ -37,7 +54,7 @@ fi
 
 # Login to GitHub Container Registry
 echo "Logging in to GitHub Container Registry..."
-echo "$GITHUB_TOKEN" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin 2>/dev/null || true
+echo "$GITHUB_TOKEN" | $DOCKER_CMD login ghcr.io -u $GITHUB_ACTOR --password-stdin 2>/dev/null || true
 echo "✓ Logged in to GHCR (or using public images)"
 
 # Install envsubst if not available
@@ -101,17 +118,17 @@ fi
 
 # Pull latest images
 echo "Pulling latest images from GHCR..."
-docker compose -f docker-compose.prod.yml pull
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml pull
 echo "✓ Images pulled successfully"
 
 # Stop and remove old containers
 echo "Stopping existing containers..."
-docker compose -f docker-compose.prod.yml down --remove-orphans
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans
 echo "✓ Old containers stopped and removed"
 
 # Start new containers
 echo "Starting new containers..."
-docker compose -f docker-compose.prod.yml up -d
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml up -d
 echo "✓ Containers started successfully"
 
 # Wait for services to be healthy
@@ -120,12 +137,12 @@ sleep 15
 
 # Run database migrations
 echo "Running database migrations..."
-docker compose -f docker-compose.prod.yml exec -T backend /app/.venv/bin/alembic upgrade head
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml exec -T backend /app/.venv/bin/alembic upgrade head
 echo "✓ Database migrations completed"
 
 # Prune old images to save space
 echo "Cleaning up old Docker images..."
-docker image prune -af --filter "until=72h" || true
+$DOCKER_CMD image prune -af --filter "until=72h" || true
 echo "✓ Old images pruned"
 
 # Show running containers
@@ -133,7 +150,7 @@ echo ""
 echo "=========================================="
 echo "Deployment Summary"
 echo "=========================================="
-docker compose -f docker-compose.prod.yml ps
+$DOCKER_COMPOSE_CMD -f docker-compose.prod.yml ps
 
 echo ""
 echo "=========================================="
