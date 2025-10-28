@@ -1,4 +1,4 @@
-# Task Manager
+# Task Manager 1
 
 A modern task management application with FastAPI backend and Next.js frontend, deployed using Docker and GitHub Container Registry (GHCR).
 
