@@ -1,25 +1,57 @@
 {
-    email CADDY_EMAIL
+    email ${EMAIL}
+    admin off
 }
 
-CADDY_DOMAIN {
+${DOMAIN} {
+    # Frontend - Serve Next.js
+    handle / {
+        reverse_proxy frontend:3000
+    }
+    
+    # Backend API - All /api/* endpoints
     handle /api/* {
-        uri strip_prefix /api
-        reverse_proxy localhost:8000
+        reverse_proxy backend:8000
     }
-    handle {
-        reverse_proxy localhost:3000
+    
+    # Backend root endpoints (health, docs, redoc, openapi.json)
+    handle /health {
+        reverse_proxy backend:8000
     }
+    
+    handle /docs* {
+        reverse_proxy backend:8000
+    }
+    
+    handle /redoc* {
+        reverse_proxy backend:8000
+    }
+    
+    handle /openapi.json {
+        reverse_proxy backend:8000
+    }
+    
+    # Enable compression
     encode gzip zstd
+    
+    # Security headers
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "SAMEORIGIN"
         X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
         -Server
     }
+    
+    # Access logs
     log {
-        output file /var/log/caddy/access.log
-        format json
+        output file /data/access.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format console
     }
 }

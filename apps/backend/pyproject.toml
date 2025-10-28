@@ -1,7 +1,7 @@
 [project]
 name = "backend"
 version = "0.1.0"
-description = ""
+description = "task manager backend service"
 authors = [
     {name = "Rakshith Vikramraj",email = "rakshith@incubyte.co"}
 ]
@@ -25,6 +25,10 @@ dependencies = [
 ]
 
 [tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = ""
+authors = ["Rakshith Vikramraj <rakshith@incubyte.co>"]
 packages = [{include = "app"}]
 
 [tool.pytest.ini_options]
