@@ -81,6 +81,7 @@ else
 ${DOMAIN} {
     # Backend API - All /api/* endpoints (handle first)
     handle /api/* {
+        uri strip_prefix /api
         reverse_proxy backend:8000
     }
     
