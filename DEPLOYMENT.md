@@ -349,27 +349,3 @@ docker network prune -f
 5. **Regular backups**: Automate database backups
 6. **SSL/TLS**: Caddy automatically handles Let's Encrypt certificates
 7. **Network isolation**: Use Docker networks for container communication
-
-## Migration from Old Deployment
-
-The previous deployment used:
-- Direct installation on EC2
-- systemd services
-- Manual dependency management
-
-New Docker deployment provides:
-- ✅ Containerized services
-- ✅ Automated builds and deployments
-- ✅ Image versioning and rollback capability
-- ✅ Consistent environments (dev/staging/prod)
-- ✅ Easier scaling and maintenance
-- ✅ Better resource isolation
-
-## Support
-
-For issues or questions:
-1. Check GitHub Actions logs
-2. Review EC2 container logs
-3. Verify all secrets are configured
-4. Ensure EC2 security groups allow required ports
-5. Check DNS configuration for domain

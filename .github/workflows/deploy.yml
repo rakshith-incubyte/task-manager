@@ -106,13 +106,30 @@ jobs:
 
       - name: Copy deployment files
         run: |
-          rsync -avz --delete \
-            --include 'docker-compose.prod.yml' \
-            --include '.github/scripts/deploy-docker.sh' \
-            --include '.github/Caddyfile.template' \
-            --exclude '*' \
-            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
-            ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH }}/
+          # Copy docker-compose.prod.yml
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            docker-compose.prod.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH }}/
+          
+          # Create .github/scripts directory on remote
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "mkdir -p ${{ env.DEPLOY_PATH }}/.github/scripts"
+          
+          # Copy deployment script
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            .github/scripts/deploy-docker.sh \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH }}/.github/scripts/
+          
+          # Copy Caddyfile template (if exists)
+          scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            .github/Caddyfile.template \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH }}/.github/ || true
+          
+          # Make deployment script executable
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "chmod +x ${{ env.DEPLOY_PATH }}/.github/scripts/deploy-docker.sh"
 
       - name: Deploy with Docker Compose
         env:

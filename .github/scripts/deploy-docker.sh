@@ -40,6 +40,14 @@ echo "Logging in to GitHub Container Registry..."
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin 2>/dev/null || true
 echo "✓ Logged in to GHCR (or using public images)"
 
+# Install envsubst if not available
+if ! command -v envsubst &> /dev/null; then
+    echo "Installing gettext-base for envsubst..."
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq gettext-base
+    echo "✓ envsubst installed"
+fi
+
 # Generate Caddyfile from template
 echo "Generating Caddyfile..."
 if [ -f .github/Caddyfile.template ]; then
