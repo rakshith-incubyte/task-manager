@@ -79,17 +79,12 @@ else
 }
 
 ${DOMAIN} {
-    # Frontend
-    handle / {
-        reverse_proxy frontend:3000
-    }
-    
-    # Backend API
+    # Backend API - All /api/* endpoints (handle first)
     handle /api/* {
         reverse_proxy backend:8000
     }
     
-    # Backend root endpoints (health, docs, etc.)
+    # Backend root endpoints (health, docs, redoc, openapi.json)
     handle /health {
         reverse_proxy backend:8000
     }
@@ -106,9 +101,37 @@ ${DOMAIN} {
         reverse_proxy backend:8000
     }
     
+    # Next.js static assets
+    handle /_next/* {
+        reverse_proxy frontend:3000
+    }
+    
+    # Frontend - All other routes go to Next.js (catch-all)
+    handle {
+        reverse_proxy frontend:3000
+    }
+    
+    # Enable compression
+    encode gzip zstd
+    
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+    
     # Logs
     log {
-        output file /data/access.log
+        output file /data/access.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
         format console
     }
 }

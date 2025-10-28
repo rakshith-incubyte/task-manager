@@ -4,12 +4,7 @@
 }
 
 ${DOMAIN} {
-    # Frontend - Serve Next.js
-    handle / {
-        reverse_proxy frontend:3000
-    }
-    
-    # Backend API - All /api/* endpoints
+    # Backend API - All /api/* endpoints (handle first)
     handle /api/* {
         reverse_proxy backend:8000
     }
@@ -29,6 +24,16 @@ ${DOMAIN} {
     
     handle /openapi.json {
         reverse_proxy backend:8000
+    }
+    
+    # Next.js static assets
+    handle /_next/* {
+        reverse_proxy frontend:3000
+    }
+    
+    # Frontend - All other routes go to Next.js (catch-all)
+    handle {
+        reverse_proxy frontend:3000
     }
     
     # Enable compression
