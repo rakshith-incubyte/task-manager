@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { Task, TaskStatus } from '@/lib/api-client'
-import { useTaskActions } from '@/hooks/use-task-actions'
+import { Task } from '@/lib/api-client'
+import { useTaskApi } from '@/hooks/use-task-api'
 import { type TaskFormData } from '@/lib/task-form-validation'
 
 type UseTaskCrudProps = {
@@ -51,7 +51,7 @@ export const useTaskCrud = ({
     [showToast]
   )
 
-  const { createTask, updateTask, deleteTask } = useTaskActions(
+  const { createTask, updateTask, deleteTask } = useTaskApi(
     accessToken,
     handleSuccess,
     handleError
