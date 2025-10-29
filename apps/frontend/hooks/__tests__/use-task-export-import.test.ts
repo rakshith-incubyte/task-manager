@@ -1,11 +1,29 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { describe, it, expect, jest, beforeEach } from '@jest/globals'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useTaskExportImport } from '../use-task-export-import'
 import { Task } from '@/lib/api-client'
+import { TaskExporter } from '@/lib/task-exporter'
+import { TaskImporter } from '@/lib/task-importer'
 
-// Mock the exporter and importer
-jest.mock('@/lib/task-exporter')
-jest.mock('@/lib/task-importer')
+// Mock the exporter and importer classes
+vi.mock('@/lib/task-exporter', () => ({
+  TaskExporter: vi.fn().mockImplementation(() => ({
+    jsonStrategy: {},
+    csvStrategy: {},
+    fileDownloader: {},
+    exportToJSON: vi.fn(),
+    exportToCSV: vi.fn(),
+    downloadFile: vi.fn(),
+    exportAndDownloadJSON: vi.fn(),
+    exportAndDownloadCSV: vi.fn(),
+  })),
+}))
+
+vi.mock('@/lib/task-importer', () => ({
+  TaskImporter: vi.fn().mockImplementation(() => ({
+    importFromFile: vi.fn(),
+  })),
+}))
 
 describe('useTaskExportImport', () => {
   const mockTasks: Task[] = [
@@ -22,37 +40,74 @@ describe('useTaskExportImport', () => {
   ]
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('exportTasks', () => {
     it('should export tasks as JSON', () => {
+      const mockExportJSON = vi.fn()
+      const mockedExporter = vi.mocked(TaskExporter)
+      mockedExporter.mockImplementation(() => ({
+        jsonStrategy: {},
+        csvStrategy: {},
+        fileDownloader: {},
+        exportToJSON: vi.fn(),
+        exportToCSV: vi.fn(),
+        downloadFile: vi.fn(),
+        exportAndDownloadJSON: mockExportJSON,
+        exportAndDownloadCSV: vi.fn(),
+      }))
+
       const { result } = renderHook(() => useTaskExportImport())
 
       act(() => {
         result.current.exportTasks(mockTasks, 'json')
       })
 
+      expect(mockExportJSON).toHaveBeenCalledWith(mockTasks, expect.stringContaining('.json'))
       expect(result.current.isExporting).toBe(false)
       expect(result.current.error).toBeNull()
     })
 
     it('should export tasks as CSV', () => {
+      const mockExportCSV = vi.fn()
+      const mockedExporter = vi.mocked(TaskExporter)
+      mockedExporter.mockImplementation(() => ({
+        jsonStrategy: {},
+        csvStrategy: {},
+        fileDownloader: {},
+        exportToJSON: vi.fn(),
+        exportToCSV: vi.fn(),
+        downloadFile: vi.fn(),
+        exportAndDownloadJSON: vi.fn(),
+        exportAndDownloadCSV: mockExportCSV,
+      }))
+
       const { result } = renderHook(() => useTaskExportImport())
 
       act(() => {
         result.current.exportTasks(mockTasks, 'csv')
       })
 
+      expect(mockExportCSV).toHaveBeenCalledWith(mockTasks, expect.stringContaining('.csv'))
       expect(result.current.isExporting).toBe(false)
       expect(result.current.error).toBeNull()
     })
 
     it('should handle export errors', () => {
-      const { TaskExporter } = require('@/lib/task-exporter')
-      TaskExporter.prototype.exportAndDownloadJSON = jest.fn(() => {
-        throw new Error('Export failed')
-      })
+      const mockedExporter = vi.mocked(TaskExporter)
+      mockedExporter.mockImplementation(() => ({
+        jsonStrategy: {},
+        csvStrategy: {},
+        fileDownloader: {},
+        exportToJSON: vi.fn(),
+        exportToCSV: vi.fn(),
+        downloadFile: vi.fn(),
+        exportAndDownloadJSON: vi.fn(() => {
+          throw new Error('Export failed')
+        }),
+        exportAndDownloadCSV: vi.fn(),
+      }))
 
       const { result } = renderHook(() => useTaskExportImport())
 
@@ -61,13 +116,17 @@ describe('useTaskExportImport', () => {
       })
 
       expect(result.current.error).toBe('Export failed')
+      expect(result.current.isExporting).toBe(false)
     })
   })
 
   describe('importTasks', () => {
     it('should import tasks from file', async () => {
-      const { TaskImporter } = require('@/lib/task-importer')
-      TaskImporter.prototype.importFromFile = jest.fn().mockResolvedValue(mockTasks)
+      const mockImportFromFile = vi.fn().mockResolvedValue(mockTasks)
+      const mockedImporter = vi.mocked(TaskImporter)
+      mockedImporter.mockImplementation(() => ({
+        importFromFile: mockImportFromFile,
+      }))
 
       const { result } = renderHook(() => useTaskExportImport())
       const mockFile = new File(['content'], 'tasks.json', { type: 'application/json' })
@@ -77,13 +136,18 @@ describe('useTaskExportImport', () => {
         importedTasks = await result.current.importTasks(mockFile)
       })
 
+      expect(mockImportFromFile).toHaveBeenCalledWith(mockFile)
       expect(importedTasks).toEqual(mockTasks)
       expect(result.current.error).toBeNull()
+      expect(result.current.isImporting).toBe(false)
     })
 
     it('should handle import errors', async () => {
-      const { TaskImporter } = require('@/lib/task-importer')
-      TaskImporter.prototype.importFromFile = jest.fn().mockRejectedValue(new Error('Import failed'))
+      const mockImportFromFile = vi.fn().mockRejectedValue(new Error('Import failed'))
+      const mockedImporter = vi.mocked(TaskImporter)
+      mockedImporter.mockImplementation(() => ({
+        importFromFile: mockImportFromFile,
+      }))
 
       const { result } = renderHook(() => useTaskExportImport())
       const mockFile = new File(['content'], 'tasks.json', { type: 'application/json' })
@@ -99,15 +163,25 @@ describe('useTaskExportImport', () => {
       await waitFor(() => {
         expect(result.current.error).toBe('Import failed')
       })
+      expect(result.current.isImporting).toBe(false)
     })
   })
 
   describe('clearError', () => {
     it('should clear error state', () => {
-      const { TaskExporter } = require('@/lib/task-exporter')
-      TaskExporter.prototype.exportAndDownloadJSON = jest.fn(() => {
-        throw new Error('Export failed')
-      })
+      const mockedExporter = vi.mocked(TaskExporter)
+      mockedExporter.mockImplementation(() => ({
+        jsonStrategy: {},
+        csvStrategy: {},
+        fileDownloader: {},
+        exportToJSON: vi.fn(),
+        exportToCSV: vi.fn(),
+        downloadFile: vi.fn(),
+        exportAndDownloadJSON: vi.fn(() => {
+          throw new Error('Export failed')
+        }),
+        exportAndDownloadCSV: vi.fn(),
+      }))
 
       const { result } = renderHook(() => useTaskExportImport())
 

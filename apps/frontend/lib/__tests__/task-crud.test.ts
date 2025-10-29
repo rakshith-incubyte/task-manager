@@ -1,5 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createTask, deleteTask, type CreateTaskRequest } from '../api-client'
+import { axiosInstance } from '../http-client'
+
+// Mock the http-client module
+vi.mock('../http-client', () => ({
+  httpClient: {
+    setAccessToken: vi.fn(),
+    getAccessToken: vi.fn(),
+    clearTokens: vi.fn(),
+  },
+  axiosInstance: {
+    post: vi.fn(),
+    get: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+  }
+}))
+
+const mockedAxiosInstance = vi.mocked(axiosInstance, { deep: true })
 
 describe('Task CRUD API Client', () => {
   const mockAccessToken = 'mock-access-token'
@@ -7,7 +25,6 @@ describe('Task CRUD API Client', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    global.fetch = vi.fn()
   })
 
   describe('createTask', () => {
@@ -27,23 +44,13 @@ describe('Task CRUD API Client', () => {
         updated_at: '2024-01-01T00:00:00Z',
       }
 
-      ;(global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      })
+      mockedAxiosInstance.post.mockResolvedValueOnce({ data: mockResponse })
 
       const result = await createTask(mockAccessToken, mockTaskData)
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        `${mockApiUrl}/tasks/`,
-        expect.objectContaining({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${mockAccessToken}`,
-          },
-          body: JSON.stringify(mockTaskData),
-        })
+      expect(mockedAxiosInstance.post).toHaveBeenCalledWith(
+        '/tasks/',
+        mockTaskData
       )
       expect(result).toEqual(mockResponse)
     })
@@ -56,10 +63,13 @@ describe('Task CRUD API Client', () => {
         priority: 'medium',
       }
 
-      ;(global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ detail: 'Title is required' }),
-      })
+      const mockError = {
+        response: {
+          data: { detail: 'Title is required' }
+        }
+      }
+
+      mockedAxiosInstance.post.mockRejectedValueOnce(mockError)
 
       await expect(createTask(mockAccessToken, invalidTaskData)).rejects.toThrow(
         'Title is required'
@@ -74,15 +84,16 @@ describe('Task CRUD API Client', () => {
         priority: 'medium',
       }
 
-      ;(global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-        json: async () => {
-          throw new Error('Network error')
-        },
-      })
+      const mockError = {
+        response: {
+          data: { detail: 'Network error' }
+        }
+      }
+
+      mockedAxiosInstance.post.mockRejectedValueOnce(mockError)
 
       await expect(createTask(mockAccessToken, mockTaskData)).rejects.toThrow(
-        'Failed to create task'
+        'Network error'
       )
     })
   })
@@ -91,31 +102,23 @@ describe('Task CRUD API Client', () => {
     it('should delete a task successfully', async () => {
       const taskId = '123'
 
-      ;(global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        status: 204,
-      })
+      mockedAxiosInstance.delete.mockResolvedValueOnce({})
 
       await deleteTask(mockAccessToken, taskId)
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        `${mockApiUrl}/tasks/${taskId}`,
-        expect.objectContaining({
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${mockAccessToken}`,
-          },
-        })
-      )
+      expect(mockedAxiosInstance.delete).toHaveBeenCalledWith(`/tasks/${taskId}`)
     })
 
     it('should handle not found error when deleting task', async () => {
       const taskId = 'non-existent'
 
-      ;(global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ detail: 'Task not found' }),
-      })
+      const mockError = {
+        response: {
+          data: { detail: 'Task not found' }
+        }
+      }
+
+      mockedAxiosInstance.delete.mockRejectedValueOnce(mockError)
 
       await expect(deleteTask(mockAccessToken, taskId)).rejects.toThrow(
         'Task not found'
@@ -125,10 +128,13 @@ describe('Task CRUD API Client', () => {
     it('should handle unauthorized error when deleting task', async () => {
       const taskId = '123'
 
-      ;(global.fetch as any).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ detail: 'Not authorized to delete this task' }),
-      })
+      const mockError = {
+        response: {
+          data: { detail: 'Not authorized to delete this task' }
+        }
+      }
+
+      mockedAxiosInstance.delete.mockRejectedValueOnce(mockError)
 
       await expect(deleteTask(mockAccessToken, taskId)).rejects.toThrow(
         'Not authorized to delete this task'

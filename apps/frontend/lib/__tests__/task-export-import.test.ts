@@ -1,7 +1,16 @@
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { TaskExporter } from '../task-exporter'
 import { TaskImporter } from '../task-importer'
 import { Task } from '../api-client'
+
+// Mock URL.createObjectURL and URL.revokeObjectURL
+Object.defineProperty(global, 'URL', {
+  value: {
+    createObjectURL: vi.fn(() => 'mock-url'),
+    revokeObjectURL: vi.fn(),
+  },
+  writable: true,
+})
 
 describe('TaskExporter', () => {
   let exporter: TaskExporter
@@ -101,14 +110,14 @@ describe('TaskExporter', () => {
 
   describe('downloadFile', () => {
     it('should create a download link with correct attributes', () => {
-      const createElementSpy = jest.spyOn(document, 'createElement')
-      const clickSpy = jest.fn()
+      const createElementSpy = vi.spyOn(document, 'createElement')
+      const clickSpy = vi.fn()
       
       const mockLink = {
         href: '',
         download: '',
         click: clickSpy,
-        remove: jest.fn(),
+        remove: vi.fn(),
       } as any
       
       createElementSpy.mockReturnValue(mockLink)

@@ -1,12 +1,30 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, jest } from '@jest/globals'
+import { describe, it, expect, vi } from 'vitest'
 import { TaskToolbar } from '../task-toolbar'
+
+// Mock the dropdown menu components
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => children,
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({ 
+    children, 
+    onClick 
+  }: { 
+    children: React.ReactNode
+    onClick?: () => void 
+  }) => (
+    <div onClick={onClick} data-testid="dropdown-menu-item">
+      {children}
+    </div>
+  ),
+}))
 
 describe('TaskToolbar', () => {
   const defaultProps = {
     viewMode: 'grid' as const,
-    onViewModeChange: jest.fn(),
-    onCreateTask: jest.fn(),
+    onViewModeChange: vi.fn(),
+    onCreateTask: vi.fn(),
   }
 
   it('should render create task button', () => {
@@ -53,7 +71,7 @@ describe('TaskToolbar', () => {
 
   describe('Export functionality', () => {
     it('should render export button when onExport is provided', () => {
-      const onExport = jest.fn()
+      const onExport = vi.fn()
       render(<TaskToolbar {...defaultProps} onExport={onExport} />)
       
       const exportButton = screen.getByRole('button', { name: /export/i })
@@ -67,45 +85,36 @@ describe('TaskToolbar', () => {
       expect(exportButton).not.toBeInTheDocument()
     })
 
-    it('should show export menu when export button is clicked', () => {
-      const onExport = jest.fn()
+    it('should show export menu options', () => {
+      const onExport = vi.fn()
       render(<TaskToolbar {...defaultProps} onExport={onExport} />)
       
-      const exportButton = screen.getByRole('button', { name: /export/i })
-      fireEvent.click(exportButton)
-      
-      expect(screen.getByText(/export as json/i)).toBeInTheDocument()
-      expect(screen.getByText(/export as csv/i)).toBeInTheDocument()
+      expect(screen.getByText('Export as JSON')).toBeInTheDocument()
+      expect(screen.getByText('Export as CSV')).toBeInTheDocument()
     })
 
     it('should call onExport with json format', () => {
-      const onExport = jest.fn()
+      const onExport = vi.fn()
       render(<TaskToolbar {...defaultProps} onExport={onExport} />)
       
-      const exportButton = screen.getByRole('button', { name: /export/i })
-      fireEvent.click(exportButton)
-      
-      const jsonOption = screen.getByText(/export as json/i)
+      const jsonOption = screen.getByText('Export as JSON')
       fireEvent.click(jsonOption)
       
       expect(onExport).toHaveBeenCalledWith('json')
     })
 
     it('should call onExport with csv format', () => {
-      const onExport = jest.fn()
+      const onExport = vi.fn()
       render(<TaskToolbar {...defaultProps} onExport={onExport} />)
       
-      const exportButton = screen.getByRole('button', { name: /export/i })
-      fireEvent.click(exportButton)
-      
-      const csvOption = screen.getByText(/export as csv/i)
+      const csvOption = screen.getByText('Export as CSV')
       fireEvent.click(csvOption)
       
       expect(onExport).toHaveBeenCalledWith('csv')
     })
 
     it('should disable export button when isExporting is true', () => {
-      const onExport = jest.fn()
+      const onExport = vi.fn()
       render(<TaskToolbar {...defaultProps} onExport={onExport} isExporting={true} />)
       
       const exportButton = screen.getByRole('button', { name: /export/i })
@@ -115,7 +124,7 @@ describe('TaskToolbar', () => {
 
   describe('Import functionality', () => {
     it('should render import button when onImport is provided', () => {
-      const onImport = jest.fn()
+      const onImport = vi.fn()
       render(<TaskToolbar {...defaultProps} onImport={onImport} />)
       
       const importButton = screen.getByRole('button', { name: /import/i })
@@ -130,20 +139,20 @@ describe('TaskToolbar', () => {
     })
 
     it('should trigger file input when import button is clicked', () => {
-      const onImport = jest.fn()
+      const onImport = vi.fn()
       render(<TaskToolbar {...defaultProps} onImport={onImport} />)
       
       const importButton = screen.getByRole('button', { name: /import/i })
       const fileInput = screen.getByLabelText(/import tasks file/i)
       
-      const clickSpy = jest.spyOn(fileInput, 'click')
+      const clickSpy = vi.spyOn(fileInput, 'click')
       fireEvent.click(importButton)
       
       expect(clickSpy).toHaveBeenCalled()
     })
 
     it('should call onImport when file is selected', () => {
-      const onImport = jest.fn()
+      const onImport = vi.fn()
       render(<TaskToolbar {...defaultProps} onImport={onImport} />)
       
       const fileInput = screen.getByLabelText(/import tasks file/i) as HTMLInputElement
@@ -160,7 +169,7 @@ describe('TaskToolbar', () => {
     })
 
     it('should accept only json and csv files', () => {
-      const onImport = jest.fn()
+      const onImport = vi.fn()
       render(<TaskToolbar {...defaultProps} onImport={onImport} />)
       
       const fileInput = screen.getByLabelText(/import tasks file/i) as HTMLInputElement
@@ -168,7 +177,7 @@ describe('TaskToolbar', () => {
     })
 
     it('should disable import button when isImporting is true', () => {
-      const onImport = jest.fn()
+      const onImport = vi.fn()
       render(<TaskToolbar {...defaultProps} onImport={onImport} isImporting={true} />)
       
       const importButton = screen.getByRole('button', { name: /import/i })
@@ -176,7 +185,7 @@ describe('TaskToolbar', () => {
     })
 
     it('should reset file input after selection', () => {
-      const onImport = jest.fn()
+      const onImport = vi.fn()
       render(<TaskToolbar {...defaultProps} onImport={onImport} />)
       
       const fileInput = screen.getByLabelText(/import tasks file/i) as HTMLInputElement

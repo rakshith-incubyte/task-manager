@@ -37,6 +37,7 @@ export const loginUser = async (
     )
     return response.data
   } catch (error: any) {
+    console.error(error)
     throw new Error(error.response?.data?.detail || 'Login failed')
   }
 }

@@ -106,8 +106,17 @@ jobs:
         working-directory: apps/frontend
         run: npm install
 
+      - name: Create test environment file
+        working-directory: apps/frontend
+        run: |
+          cat > .env.test.local << EOF
+          NEXT_PUBLIC_API_URL=https://task-manger.rakneo.dev/api
+          EOF
+
       - name: Run frontend tests with coverage
         working-directory: apps/frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://task-manger.rakneo.dev/api
         run: npm run test:coverage
 
       - name: Upload frontend coverage to Coveralls
