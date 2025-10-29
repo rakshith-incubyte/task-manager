@@ -7,7 +7,10 @@ import {
   getAllTasks, 
   createTask, 
   updateTask, 
-  deleteTask 
+  deleteTask, 
+  TaskQueryParams,
+  UpdateTaskRequest,
+  CreateTaskRequest
 } from '@/lib/api-client'
 import { httpClient, axiosInstance } from '@/lib/http-client'
 
@@ -174,7 +177,7 @@ describe('API Client', () => {
       const mockResponse = { data: mockTasks }
       mockedAxiosInstance.get.mockResolvedValueOnce(mockResponse)
 
-      const params = {
+      const params: TaskQueryParams = {
         status: 'todo',
         priority: 'high',
         limit: 10,
@@ -301,7 +304,7 @@ describe('API Client', () => {
         updated_at: '2025-01-01T00:00:00Z',
       }
 
-      const taskData = {
+      const taskData: CreateTaskRequest = {
         title: 'New Task',
         description: 'New Description',
         status: 'todo',
@@ -348,7 +351,7 @@ describe('API Client', () => {
         updated_at: '2025-01-02T00:00:00Z',
       }
 
-      const updateData = {
+      const updateData: UpdateTaskRequest = {
         title: 'Updated Task',
         status: 'in_progress',
       }

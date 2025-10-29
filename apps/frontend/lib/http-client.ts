@@ -1,6 +1,30 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const isServer = typeof window === 'undefined'
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
+
+// Resolve a safe base URL that always uses the public API URL
+const resolveBaseURL = (): string => {
+  // If an absolute public URL is provided, always use it
+  if (PUBLIC_API_URL && /^https?:\/\//.test(PUBLIC_API_URL)) return PUBLIC_API_URL
+
+  if (isServer) {
+    // On the server, relative URLs are invalid. In production, require absolute public URL.
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'NEXT_PUBLIC_API_URL must be an absolute URL in production for SSR (e.g., https://your-domain/api)'
+      )
+    }
+    // In development, fallback to localhost origin for convenience
+    const rel = PUBLIC_API_URL || '/api'
+    return `http://localhost:3000${rel.startsWith('/') ? rel : `/${rel}`}`
+  }
+
+  // In the browser, a relative public path is fine
+  return PUBLIC_API_URL || '/api'
+}
+
+const API_BASE_URL = resolveBaseURL()
 
 /**
  * HTTP client with automatic token refresh interceptor
@@ -75,10 +99,10 @@ class HttpClient {
           try {
             // Call refresh endpoint (refresh token sent via httpOnly cookie)
             console.log('Attempting token refresh...')
-            const response = await axios.post(
-              `${API_BASE_URL}/users/auth/refresh`,
+            const response = await this.client.post(
+              '/users/auth/refresh',
               {},
-              { withCredentials: true } // Send cookies
+              { withCredentials: true }
             )
 
             console.log('Token refresh successful')
