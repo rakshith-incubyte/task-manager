@@ -168,6 +168,7 @@ class HttpClient {
   }
 }
 
-// Export singleton instance
+// Export class and singleton instance
+export { HttpClient }
 export const httpClient = new HttpClient()
 export const axiosInstance = httpClient.getInstance()
